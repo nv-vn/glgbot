@@ -1,15 +1,6 @@
-exception ApiException of string
+open Yojson.Safe
 
-type json = [ `Assoc of (string * json) list
-            | `Bool of bool
-            | `Float of float
-            | `Int of int
-            | `Intlit of string
-            | `List of json list
-            | `Null
-            | `String of string
-            | `Tuple of json list
-            | `Variant of string * json option ]
+exception ApiException of string
 
 let rec get_field target = function
   | `Assoc [] -> raise (ApiException "Could not read JSON field!")
@@ -36,6 +27,10 @@ let the_string = function
 
 let the_int = function
   | `Int int -> int
+  | _ -> raise (ApiException "Type assertion failed!")
+
+let the_list = function
+  | `List list -> list
   | _ -> raise (ApiException "Type assertion failed!")
 
 module User = struct
@@ -126,19 +121,60 @@ module Update = struct
     create ~update_id ~message ()
 end
 
-module Response = struct
-  type result =
-    | User of User.user
-    | Updates of Update.update list
-    | Err of string
+module Result = struct
+  type 'a result = Success of 'a | Failure of string
 
-  let read obj =
-    match get_field "ok" obj with
-    | `Bool true -> begin
-        match get_field "result" obj with
-        | `List updates -> Updates (List.map Update.read updates)
-        | `Assoc user -> User (User.read (`Assoc user))
-        | _ -> Err "Couldn't read response!"
-      end
-    | _ -> Err (the_string @@ get_field "description" obj)
+  let return x = Success x
+
+  let default x = function
+    | Success x -> x
+    | Failure _ -> x
+
+  let (>>=) x f = match x with
+    | Success x -> f x
+    | Failure err -> Failure err
+
+  let (<$>) f = function
+    | Success x -> Success (f x)
+    | Failure err -> Failure err
+end
+
+module type BOT = sig
+  val token : string
+end
+
+module Mk (B : BOT) = struct
+  open Lwt
+  open Cohttp
+  open Cohttp_lwt_unix
+
+  let url = "https://api.telegram.org/bot" ^ B.token ^ "/"
+
+  let get_me =
+    Client.get (Uri.of_string (url ^ "getMe")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success (User.read @@ get_field "result" obj)
+    | _ -> Result.Failure (the_string @@ get_field "description" obj)
+
+  let send_message ~chat_id ~text =
+    let json = `Assoc [("chat_id", `Int chat_id);
+                              ("text", `String text)] in
+    let body = Yojson.Safe.to_string json in
+    let headers  = Cohttp.Header.init_with "Content-Type" "application/json" in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendMessage")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success ()
+    | _ -> Result.Failure (the_string @@ get_field "description" obj)
+
+  let get_updates =
+    Client.get (Uri.of_string (url ^ "getUpdates")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success (List.map Update.read @@ the_list @@ get_field "result" obj)
+    | _ -> Result.Failure (the_string @@ get_field "description" obj)
 end

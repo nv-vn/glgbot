@@ -1,13 +1,4 @@
-type json = [ `Assoc of (string * json) list
-            | `Bool of bool
-            | `Float of float
-            | `Int of int
-            | `Intlit of string
-            | `List of json list
-            | `Null
-            | `String of string
-            | `Tuple of json list
-            | `Variant of string * json option ] 
+open Yojson.Safe
 
 exception ApiException of string
 
@@ -59,10 +50,23 @@ module Update : sig
   val read : json -> update
 end
 
-module Response : sig
-  type result =
-    | User of User.user
-    | Updates of Update.update list
-    | Err of string
-  val read : json -> result
+module Result : sig
+  type 'a result = Success of 'a | Failure of string
+
+  val return : 'a -> 'a result
+  val default : 'a -> 'a result -> 'a
+  val (>>=) : 'a result -> ('a -> 'b result) -> 'b result
+  val (<$>) : ('a -> 'b) -> 'a result -> 'b result
+end
+
+module type BOT = sig
+  val token : string
+end
+
+module Mk : functor (B : BOT) -> sig
+  val url : string
+
+  val get_me : User.user Result.result Lwt.t
+  val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
+  val get_updates : Update.update list Result.result Lwt.t
 end

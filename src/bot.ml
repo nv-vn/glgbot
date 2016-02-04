@@ -1,24 +1,12 @@
-open Api
-
 open Lwt
 open Cohttp
 open Cohttp_lwt_unix
 
 open Yojson.Safe
 
-(* Remember, we start from _build/ *)
-let bot_token = [%blob "../bot.token"]
-
-let bot_url = "https://api.telegram.org/bot" ^ bot_token ^ "/"
-
-let call fn =
-  let url = bot_url ^ fn in
-  Client.get (Uri.of_string url) >>= fun (resp, body) ->
-  Cohttp_lwt_body.to_string body
-
-let get_updates =
-  call "getUpdates" >>= fun json ->
-  return @@ Api.Response.read (from_string json)
+module MyBot = Api.Mk (struct
+    let token = [%blob "../bot.token"] (* Remember, we start from _build/ *)
+end)
 
 let format_update update =
   let open Api.Update  in
@@ -36,9 +24,35 @@ let format_update update =
     end
   | None -> "No message included"
 
+let echo update =
+  let open Api.Update  in
+  let open Api.Message in
+  let open Api.User    in
+  let open Api.Chat    in
+  match update.message with
+  | Some message -> begin
+      let text = match message.text with
+        | Some text -> text
+        | None -> "Please send a valid message"
+      and chat = message.chat.id in
+      MyBot.send_message ~chat_id:chat ~text
+    end
+  | None -> return @@ Api.Result.Failure "Can't read message to echo"
+
+type 'a result = 'a Api.Result.result
+
 let () =
-  let body = Lwt_main.run @@ call "getMe" in
-  print_endline body;
-  match Lwt_main.run get_updates with
-  | Updates msgs -> List.iter (fun update -> print_endline @@ format_update update) msgs
-  | _ -> print_endline "Error while reading message queue"
+  let open Api.Result in
+  let open Api.User in
+  let body = (fun user -> user.first_name) <$> Lwt_main.run MyBot.get_me in
+  print_endline @@ default "Error on call to `getMe`!" body;
+  let open Lwt in
+  Lwt_main.run
+    begin
+      MyBot.get_updates >>= fun updates ->
+      match updates with
+      | Success msgs -> begin
+        List.fold_right (fun msg cont -> echo msg >>= fun _ -> cont) msgs (return ())
+        end
+      | Failure error -> Lwt.return @@ print_endline error
+    end
