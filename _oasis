@@ -14,4 +14,4 @@ Executable "glgbot"
   MainIs: bot.ml
   CompiledObject: best
   Install: false
-  BuildDepends: lwt, cohttp, cohttp.lwt, yojson, ppx_blob
+  BuildDepends: lwt, cohttp, cohttp.lwt, yojson, batteries, ppx_blob

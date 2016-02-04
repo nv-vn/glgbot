@@ -5,7 +5,10 @@ open Cohttp_lwt_unix
 open Yojson.Safe
 
 module MyBot = Api.Mk (struct
+    open Api.Command
+
     let token = [%blob "../bot.token"] (* Remember, we start from _build/ *)
+    let commands = [{name = "hello"; run = (fun args -> print_endline "Hello, world")}]
 end)
 
 let format_update update =
@@ -47,6 +50,7 @@ let () =
   let body = (fun user -> user.first_name) <$> Lwt_main.run MyBot.get_me in
   print_endline @@ default "Error on call to `getMe`!" body;
   let open Lwt in
+  Lwt_main.run @@ MyBot.pop_update ();
   Lwt_main.run
     begin
       MyBot.get_updates >>= fun updates ->
