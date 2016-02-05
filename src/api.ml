@@ -85,6 +85,9 @@ module Chat = struct
 end
 
 module Message = struct
+  open Chat
+  open User
+
   (* Lots more fields to support... *)
   type message = {
     message_id : int;
@@ -204,6 +207,8 @@ module Mk (B : BOT) = struct
   open Cohttp
   open Cohttp_lwt_unix
 
+  open Command
+
   let url = "https://api.telegram.org/bot" ^ B.token ^ "/"
   let commands = B.commands
 
@@ -272,7 +277,7 @@ module Mk (B : BOT) = struct
         offset := update.update_id + 1;
         clear_update () >>= fun () ->
         if run_cmds && Command.is_command update then begin
-          evaluator @@ Command.read_update update commands;
+          ignore @@ evaluator @@ Command.read_update update commands;
           return @@ Result.Success (Update.create update.update_id ())
         end else return @@ Result.Success update
       end
