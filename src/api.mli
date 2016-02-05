@@ -60,12 +60,24 @@ module Result : sig
 end
 
 module Command : sig
+  type action =
+    | Nothing
+    | GetMe of (User.user Result.result -> unit Lwt.t)
+    | SendMessage of int * string
+    | GetUpdates of (Update.update list Result.result -> unit Lwt.t)
+    | PeekUpdate of (Update.update Result.result -> unit Lwt.t)
+    | PopUpdate of (Update.update Result.result -> unit Lwt.t)
+    | Chain of action * action
+
   type command = {
     name : string;
-    run  : string list -> unit
+    run  : Message.message -> action
   }
 
-  val read_command : string -> command list -> unit
+  val is_command : Update.update -> bool
+  val read_command : Message.message -> command list -> action
+  val read_update : Update.update -> command list -> action
+  val tokenize : string -> string list
 end
 
 module type BOT = sig
@@ -73,7 +85,7 @@ module type BOT = sig
   val commands : Command.command list
 end
 
-module Mk : functor (B : BOT) -> sig
+module type TELEGRAM_BOT = sig
   val url : string
   val commands : Command.command list
 
@@ -81,5 +93,7 @@ module Mk : functor (B : BOT) -> sig
   val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
   val get_updates : Update.update list Result.result Lwt.t
   val peek_update : Update.update Result.result Lwt.t
-  val pop_update : unit -> Update.update Result.result Lwt.t
+  val pop_update : ?run_cmds:bool -> unit -> Update.update Result.result Lwt.t
 end
+
+module Mk : functor (B : BOT) -> TELEGRAM_BOT

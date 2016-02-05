@@ -140,22 +140,58 @@ module Result = struct
 end
 
 module Command = struct
+  open Update
+  open Message
   open Batteries.String
+
+  type action =
+    | Nothing
+    | GetMe of (User.user Result.result -> unit Lwt.t)
+    | SendMessage of int * string
+    | GetUpdates of (Update.update list Result.result -> unit Lwt.t)
+    | PeekUpdate of (Update.update Result.result -> unit Lwt.t)
+    | PopUpdate of (Update.update Result.result -> unit Lwt.t)
+    | Chain of action * action
 
   type command = {
     name : string;
-    run  : string list -> unit (* Pass bot + full message info! *)
+    run  : message -> action
   }
 
-  let rec read_command str = function
-    | [] -> ()
-    | cmd::_ when starts_with str ("/" ^ cmd.name) -> cmd.run (List.tl @@ nsplit str ~by:" ")
-    | _::cmds -> read_command str cmds
+  let is_command = function
+    | {message = Some {text = Some txt}} when starts_with txt "/" -> true
+    | _ -> false
+
+  let rec read_command msg cmds = match msg with
+    | {text = Some txt; _} -> begin
+        match cmds with
+        | [] -> Nothing
+        | cmd::_ when starts_with txt ("/" ^ cmd.name) -> cmd.run msg
+        | _::cmds -> read_command msg cmds
+      end
+    | {text = None} -> Nothing
+
+  let read_update = function
+    | {message = Some msg} -> read_command msg
+    | _ -> fun _ -> Nothing
+
+  let tokenize msg = List.tl @@ nsplit msg ~by:" "
 end
 
 module type BOT = sig
   val token : string
   val commands : Command.command list
+end
+
+module type TELEGRAM_BOT = sig
+  val url : string
+  val commands : Command.command list
+
+  val get_me : User.user Result.result Lwt.t
+  val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
+  val get_updates : Update.update list Result.result Lwt.t
+  val peek_update : Update.update Result.result Lwt.t
+  val pop_update : ?run_cmds:bool -> unit -> Update.update Result.result Lwt.t
 end
 
 module Mk (B : BOT) = struct
@@ -216,7 +252,7 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success (Update.read @@ List.hd @@ the_list @@ get_field "result" obj)
     | _ -> Result.Failure (the_string @@ get_field "description" obj)
 
-  let pop_update () =
+  let rec pop_update ?(run_cmds=true) () =
     let open Update in
     let json = `Assoc [("offset", `Int !offset);
                        ("limit", `Int 1)] in
@@ -230,7 +266,19 @@ module Mk (B : BOT) = struct
         let update = Update.read @@ List.hd @@ the_list @@ get_field "result" obj in
         offset := update.update_id + 1;
         clear_update () >>= fun () ->
-        return @@ Result.Success update
+        if run_cmds && Command.is_command update then begin
+          evaluator @@ Command.read_update update commands;
+          return @@ Result.Success (Update.create update.update_id ())
+        end else return @@ Result.Success update
       end
     | _ -> return @@ Result.Failure (the_string @@ get_field "description" obj)
+
+  and evaluator = function
+    | Nothing -> return ()
+    | GetMe f -> get_me >>= f
+    | SendMessage (chat_id, text) -> send_message ~chat_id ~text >>= fun _ -> return ()
+    | GetUpdates f -> get_updates >>= f
+    | PeekUpdate f -> peek_update >>= f
+    | PopUpdate f -> pop_update () >>= f
+    | Chain (first, second) -> evaluator first >>= fun _ -> evaluator second
 end
