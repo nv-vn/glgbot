@@ -18,24 +18,43 @@ module Chat : sig
   val read_type : string -> chat_type
 
   type chat = {
-    id : int;
-    chat_type : chat_type;
-    title : string option;
-    username : string option;
+    id         : int;
+    chat_type  : chat_type;
+    title      : string option;
+    username   : string option;
     first_name : string option;
-    last_name : string option
+    last_name  : string option
   }
   val create : id:int -> chat_type:chat_type -> ?title:string option -> ?username:string option -> ?first_name:string option -> ?last_name:string option -> unit -> chat
   val read : json -> chat
 end
 
+(*module InputFile : sig
+  val load : string -> unit Lwt.t
+end*)
+
+module Audio : sig
+  type audio = {
+    chat_id             : int;
+    audio               : string;
+    duration            : int option;
+    performer           : string option;
+    title               : string option;
+    reply_to_message_id : int option;
+    reply_markup        : unit option (* FIXME *)
+  }
+
+  val create : chat_id:int -> audio:string -> ?duration:int option -> ?performer:string option -> ?title:string option -> ?reply_to:int option -> unit -> audio
+  val prepare : audio -> string
+end
+
 module Message : sig
   type message = {
     message_id : int;
-    from : User.user option;
-    date : int;
-    chat : Chat.chat;
-    text : string option
+    from       : User.user option;
+    date       : int;
+    chat       : Chat.chat;
+    text       : string option
   }
   val create : message_id:int -> ?from:User.user option -> date:int -> chat:Chat.chat -> ?text:string option -> unit -> message
   val read : json -> message
@@ -46,7 +65,7 @@ end
 module Update : sig
   type update = {
     update_id : int;
-    message : Message.message option
+    message   : Message.message option
   }
   val create : update_id:int -> ?message:Message.message option -> unit -> update
   val read : json -> update
@@ -66,6 +85,7 @@ module Command : sig
     | Nothing
     | GetMe of (User.user Result.result -> unit Lwt.t)
     | SendMessage of int * string
+    | SendAudio of int * string
     | GetUpdates of (Update.update list Result.result -> unit Lwt.t)
     | PeekUpdate of (Update.update Result.result -> unit Lwt.t)
     | PopUpdate of (Update.update Result.result -> unit Lwt.t)
@@ -93,6 +113,7 @@ module type TELEGRAM_BOT = sig
 
   val get_me : User.user Result.result Lwt.t
   val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
+  val send_audio: chat_id:int -> audio:string -> unit Result.result Lwt.t
   val get_updates : Update.update list Result.result Lwt.t
   val peek_update : Update.update Result.result Lwt.t
   val pop_update : ?run_cmds:bool -> unit -> Update.update Result.result Lwt.t
