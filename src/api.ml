@@ -104,6 +104,11 @@ module Message = struct
     let chat = Chat.read @@ get_field "chat" obj in
     let text = the_string <$> get_opt_field "text" obj in
     create ~message_id ~from ~date ~chat ~text ()
+
+  let get_sender = function
+    | {from = Some user} -> user.first_name
+    | {chat = {first_name = Some first_name}} -> first_name
+    | _ -> "unknown sender"
 end
 
 module Update = struct

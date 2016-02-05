@@ -39,6 +39,8 @@ module Message : sig
   }
   val create : message_id:int -> ?from:User.user option -> date:int -> chat:Chat.chat -> ?text:string option -> unit -> message
   val read : json -> message
+
+  val get_sender : message -> string
 end
 
 module Update : sig
