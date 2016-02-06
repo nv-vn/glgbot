@@ -18,8 +18,8 @@ module MyBot = Api.Mk (struct
         | _ -> Nothing in
       let help = function
         | {chat} -> SendMessage (chat.id, "Commands:\n/help - Show this message\n/hello - Greet the user\n/free - Free the world from the clutches of proprietary software") in
-      let free = function
-        | {chat} -> SendAudio (chat.id, "BQADAQADcQADi_LrCWoG5Wp27N76Ag", "Richard M. Stallman", "Free Software Song") in
+      let share_audio song performer title = function
+        | {chat} -> SendAudio (chat.id, song, performer, title) in
       let free' = function
         | {chat} -> begin
             begin
@@ -40,7 +40,8 @@ module MyBot = Api.Mk (struct
           end in
       [{name = "hello"; run = greet};
        {name = "help"; run = help};
-       {name = "free"; run = free}]
+       {name = "free"; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
+       {name = "ocaml"; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"}]
 end)
 
 type 'a result = 'a Api.Result.result
