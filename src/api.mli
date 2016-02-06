@@ -92,8 +92,9 @@ module Command : sig
     | Chain of action * action
 
   type command = {
-    name : string;
-    run  : Message.message -> action
+    name        : string;
+    description : string;
+    run         : Message.message -> action
   }
 
   val is_command : Update.update -> bool

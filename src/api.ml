@@ -193,8 +193,9 @@ module Command = struct
     | Chain of action * action
 
   type command = {
-    name : string;
-    run  : message -> action
+    name        : string;
+    description : string;
+    run         : message -> action
   }
 
   let is_command = function
@@ -215,6 +216,13 @@ module Command = struct
     | _ -> fun _ -> Nothing
 
   let tokenize msg = List.tl @@ nsplit msg ~by:" "
+
+  let make_helper = function
+    | {name; description} -> "/" ^ name ^ " - " ^ description
+
+  let rec make_help = function
+    | [] -> ""
+    | cmd::cmds -> "\n" ^ make_helper cmd ^ make_help cmds
 end
 
 module type BOT = sig
@@ -242,7 +250,11 @@ module Mk (B : BOT) = struct
   open Command
 
   let url = "https://api.telegram.org/bot" ^ B.token ^ "/"
-  let commands = B.commands
+  let rec commands =
+    let open Chat in
+    let open Message in
+    {name = "help"; description = "Show this message"; run = function
+         | {chat} -> SendMessage (chat.id, "Commands:\n/help - Show this message" ^ Command.make_help commands)} :: B.commands
 
   let get_me =
     Client.get (Uri.of_string (url ^ "getMe")) >>= fun (resp, body) ->

@@ -16,8 +16,6 @@ module MyBot = Api.Mk (struct
       let greet = function
         | {text = Some text; chat} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg)
         | _ -> Nothing in
-      let help = function
-        | {chat} -> SendMessage (chat.id, "Commands:\n/help - Show this message\n/hello - Greet the user\n/free - Free the world from the clutches of proprietary software") in
       let share_audio song performer title = function
         | {chat} -> SendAudio (chat.id, song, performer, title) in
       let free' = function
@@ -38,10 +36,9 @@ module MyBot = Api.Mk (struct
             end |> Lwt_main.run;
             Nothing
           end in
-      [{name = "hello"; run = greet};
-       {name = "help"; run = help};
-       {name = "free"; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
-       {name = "ocaml"; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"}]
+      [{name = "hello"; description = "Greet the user"; run = greet};
+       {name = "free"; description = "Free the world from the clutches of proprietary software"; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
+       {name = "ocaml"; description = "Shill OCaml"; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"}]
 end)
 
 type 'a result = 'a Api.Result.result
