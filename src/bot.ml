@@ -12,13 +12,32 @@ module MyBot = Api.Mk (struct
 
     let token = [%blob "../bot.token"] (* Remember, we start from _build/ *)
     let commands =
+      let open Lwt in
       let greet = function
         | {text = Some text; chat} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg)
         | _ -> Nothing in
       let help = function
         | {chat} -> SendMessage (chat.id, "Commands:\n/help - Show this message\n/hello - Greet the user\n/free - Free the world from the clutches of proprietary software") in
       let free = function
-        | {chat} -> SendAudio (chat.id, "BQADAQADbwADi_LrCZYT832sBq6qAg") in
+        | {chat} -> SendAudio (chat.id, "BQADAQADcQADi_LrCWoG5Wp27N76Ag", "Richard M. Stallman", "Free Software Song") in
+      let free' = function
+        | {chat} -> begin
+            begin
+              let url = "https://api.telegram.org/bot" ^ token ^ "/" in
+              let song = Api.InputFile.load "./data/free.ogg" in
+              song >>= fun bytes ->
+              let boundary = "---1234567890" in
+              let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
+              let body = "--" ^ boundary ^ "\r\nContent-Disposition: form-data; name=\"voice\"\r\n\r\n"
+                         ^ bytes ^ "\r\n--" ^ boundary ^ "\r\n" in
+              print_endline body;
+              let body = Cohttp_lwt_body.of_string body in
+              Client.post ~headers ~body (Uri.of_string (url ^ "sendVoice")) >>= fun (resp, body) ->
+              Cohttp_lwt_body.to_string body >>= fun json ->
+              return @@ print_endline json
+            end |> Lwt_main.run;
+            Nothing
+          end in
       [{name = "hello"; run = greet};
        {name = "help"; run = help};
        {name = "free"; run = free}]

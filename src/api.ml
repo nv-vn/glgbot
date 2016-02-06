@@ -84,30 +84,32 @@ module Chat = struct
     create ~id ~chat_type ~title ~username ~first_name ~last_name ()
 end
 
-(*module InputFile = struct
-  let load file =
+module InputFile = struct
+  let load (file:string) =
     let fstream = Lwt_io.lines_of_file file in
     Lwt_stream.fold (fun line lines -> lines ^ "\n" ^ line) fstream ""
-end*)
+end
 
 module Audio = struct
   type audio = {
     chat_id             : int;
     audio               : string;
     duration            : int option;
-    performer           : string option;
-    title               : string option;
+    performer           : string;
+    title               : string;
     reply_to_message_id : int option;
     reply_markup        : unit option (* FIXME *)
   }
 
-  let create ~chat_id ~audio ?(duration = None) ?(performer = None) ?(title = None) ?(reply_to = None) () =
+  let create ~chat_id ~audio ?(duration = None) ~performer ~title ?(reply_to = None) () =
     {chat_id; audio; duration; performer; title; reply_to_message_id = reply_to; reply_markup = None}
 
   let prepare = function
-    | {chat_id; audio} -> begin
+    | {chat_id; audio; performer; title} -> begin
         let json = `Assoc [("chat_id", `Int chat_id);
-                           ("audio", `String audio)] in
+                           ("audio", `String audio);
+                           ("performer", `String performer);
+                           ("title", `String title)] in
         Yojson.Safe.to_string json
       end
 end
@@ -184,7 +186,7 @@ module Command = struct
     | Nothing
     | GetMe of (User.user Result.result -> unit Lwt.t)
     | SendMessage of int * string
-    | SendAudio of int * string
+    | SendAudio of int * string * string * string
     | GetUpdates of (Update.update list Result.result -> unit Lwt.t)
     | PeekUpdate of (Update.update Result.result -> unit Lwt.t)
     | PopUpdate of (Update.update Result.result -> unit Lwt.t)
@@ -226,7 +228,7 @@ module type TELEGRAM_BOT = sig
 
   val get_me : User.user Result.result Lwt.t
   val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
-  val send_audio : chat_id:int -> audio:string -> unit Result.result Lwt.t
+  val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> unit Result.result Lwt.t
   val get_updates : Update.update list Result.result Lwt.t
   val peek_update : Update.update Result.result Lwt.t
   val pop_update : ?run_cmds:bool -> unit -> Update.update Result.result Lwt.t
@@ -262,9 +264,8 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success ()
     | _ -> Result.Failure (the_string @@ get_field "description" obj)
 
-  let send_audio ~chat_id ~audio =
-    let body = Audio.prepare @@ Audio.create ~chat_id ~audio () in
-    print_endline body;
+  let send_audio ~chat_id ~audio ~performer ~title =
+    let body = Audio.prepare @@ Audio.create ~chat_id ~audio ~performer ~title () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendAudio")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -328,7 +329,7 @@ module Mk (B : BOT) = struct
     | Nothing -> return ()
     | GetMe f -> get_me >>= f
     | SendMessage (chat_id, text) -> send_message ~chat_id ~text >>= fun _ -> return ()
-    | SendAudio (chat_id, audio) -> send_audio ~chat_id ~audio >>= fun _ -> return ()
+    | SendAudio (chat_id, audio, performer, title) -> send_audio ~chat_id ~audio ~performer ~title >>= fun _ -> return ()
     | GetUpdates f -> get_updates >>= f
     | PeekUpdate f -> peek_update >>= f
     | PopUpdate f -> pop_update () >>= f
