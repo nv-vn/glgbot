@@ -254,7 +254,7 @@ module Mk (B : BOT) = struct
     let open Chat in
     let open Message in
     {name = "help"; description = "Show this message"; run = function
-         | {chat} -> SendMessage (chat.id, "Commands:\n/help - Show this message" ^ Command.make_help commands)} :: B.commands
+         | {chat} -> SendMessage (chat.id, "Commands:" ^ Command.make_help commands)} :: B.commands
 
   let get_me =
     Client.get (Uri.of_string (url ^ "getMe")) >>= fun (resp, body) ->
