@@ -31,6 +31,7 @@ end
 
 module InputFile : sig
   val load : string -> string Lwt.t
+  val multipart_body : (string * string) list -> string * string * string -> string -> string Lwt.t
 end
 
 module Audio : sig
@@ -85,7 +86,7 @@ module Command : sig
     | Nothing
     | GetMe of (User.user Result.result -> unit Lwt.t)
     | SendMessage of int * string
-    | SendAudio of int * string * string * string
+    | SendAudio of int * string * string * string * int option
     | GetUpdates of (Update.update list Result.result -> unit Lwt.t)
     | PeekUpdate of (Update.update Result.result -> unit Lwt.t)
     | PopUpdate of (Update.update Result.result -> unit Lwt.t)
@@ -114,7 +115,7 @@ module type TELEGRAM_BOT = sig
 
   val get_me : User.user Result.result Lwt.t
   val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
-  val send_audio: chat_id:int -> audio:string -> performer:string -> title:string -> unit Result.result Lwt.t
+  val send_audio: chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
   val get_updates : Update.update list Result.result Lwt.t
   val peek_update : Update.update Result.result Lwt.t
   val pop_update : ?run_cmds:bool -> unit -> Update.update Result.result Lwt.t

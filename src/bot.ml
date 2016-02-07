@@ -17,19 +17,15 @@ module MyBot = Api.Mk (struct
         | {text = Some text; chat} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg)
         | _ -> Nothing in
       let share_audio song performer title = function
-        | {chat} -> SendAudio (chat.id, song, performer, title) in
+        | {chat; message_id} -> SendAudio (chat.id, song, performer, title, Some message_id) in
       let free' = function
         | {chat} -> begin
             begin
               let url = "https://api.telegram.org/bot" ^ token ^ "/" in
-              let song = Api.InputFile.load "./data/free.ogg" in
-              song >>= fun bytes ->
               let boundary = "---1234567890" in
               let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
-              let body = "--" ^ boundary ^ "\r\nContent-Disposition: form-data; name=\"voice\"\r\n\r\n"
-                         ^ bytes ^ "\r\n--" ^ boundary ^ "\r\n" in
-              print_endline body;
-              let body = Cohttp_lwt_body.of_string body in
+              Api.InputFile.multipart_body ["chat_id", string_of_int chat.id] ("voice", "data/free.ogg", "audio/ogg") boundary >>= fun body_text ->
+              let body = Cohttp_lwt_body.of_string body_text in
               Client.post ~headers ~body (Uri.of_string (url ^ "sendVoice")) >>= fun (resp, body) ->
               Cohttp_lwt_body.to_string body >>= fun json ->
               return @@ print_endline json
@@ -38,7 +34,8 @@ module MyBot = Api.Mk (struct
           end in
       [{name = "hello"; description = "Greet the user"; run = greet};
        {name = "free"; description = "Free the world from the clutches of proprietary software"; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
-       {name = "ocaml"; description = "Shill OCaml"; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"}]
+       {name = "ocaml"; description = "Shill OCaml"; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"};
+       {name = "unfree"; description = "Testing voice API"; run = free'}]
 end)
 
 type 'a result = 'a Api.Result.result
