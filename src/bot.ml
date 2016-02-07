@@ -28,14 +28,19 @@ end)
 
 type 'a result = 'a Api.Result.result
 
-let () =
+let _ =
   let open Api.Result in
   let open Api.Update in
   let open Api.User in
   let body = (fun user -> user.first_name) <$> Lwt_main.run MyBot.get_me in
   print_endline @@ default "Error on call to `getMe`!" body;
   let open Lwt in
-  while true do
-    try ignore @@ Lwt_main.run @@ MyBot.pop_update ()
-    with _ -> ()
-  done
+  let process = function
+    | Success _ -> return ()
+    | Failure e ->
+      if e <> "Could not get head" then (* Ignore the huge fucking command line spam *)
+        Lwt_io.printl e
+      else return () in
+  let rec loop () =
+    MyBot.pop_update () >>= process >>= loop in
+  Lwt_main.run @@ loop ()

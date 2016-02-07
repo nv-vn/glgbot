@@ -99,8 +99,8 @@ module InputFile = struct
 
   let load (file:string) =
     let fstream = Lwt_io.lines_of_file file in
-    Lwt_stream.next fstream >>= fun first ->
-    Lwt_stream.fold (fun line lines -> lines ^ "\n" ^ line) fstream first
+      Lwt_stream.next fstream >>= fun first ->
+      Lwt_stream.fold (fun line lines -> lines ^ "\n" ^ line) fstream first
 
   let multipart_body fields (name, file, mime) boundary' =
     let boundary = "--" ^ boundary' in
@@ -407,6 +407,11 @@ module Mk (B : BOT) = struct
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "getUpdates")) >>= fun _ ->
     return ()
 
+  (* TODO: Rename this & move elsewhere... *)
+  let hd_ = function
+    | [] -> Result.Failure "Could not get head"
+    | x::_ -> Result.Success x
+
   let peek_update =
     let open Update in
     let json = `Assoc [("offset", `Int 0);
@@ -416,9 +421,10 @@ module Mk (B : BOT) = struct
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "getUpdates")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
     let obj = Yojson.Safe.from_string json in
-    return @@ match get_field "ok" obj with
-    | `Bool true -> Result.Success (Update.read @@ List.hd @@ the_list @@ get_field "result" obj)
-    | _ -> Result.Failure (the_string @@ get_field "description" obj)
+    let open Result in
+    Lwt.return @@ match get_field "ok" obj with
+    | `Bool true -> Update.read <$> (hd_ @@ the_list @@ get_field "result" obj)
+    | _ -> Failure (the_string @@ get_field "description" obj)
 
   let rec pop_update ?(run_cmds=true) () =
     let open Update in
@@ -431,13 +437,15 @@ module Mk (B : BOT) = struct
     let obj = Yojson.Safe.from_string json in
     match get_field "ok" obj with
     | `Bool true -> begin
-        let update = Update.read @@ List.hd @@ the_list @@ get_field "result" obj in
-        offset := update.update_id + 1;
+        let open Result in
+        let update = Update.read <$> (hd_ @@ the_list @@ get_field "result" obj) in
+        offset := default !offset ((fun update -> update.update_id + 1) <$> update);
+        let open Lwt in
         clear_update () >>= fun () ->
-        if run_cmds && Command.is_command update then begin
-          ignore @@ evaluator @@ Command.read_update update commands;
-          return @@ Result.Success (Update.create update.update_id ())
-        end else return @@ Result.Success update
+        if run_cmds && default false (Command.is_command <$> update) then begin
+          ignore ((fun update -> evaluator @@ Command.read_update update commands) <$> update);
+          return @@ ((fun update -> Update.create update.update_id ()) <$> update)
+        end else return update
       end
     | _ -> return @@ Result.Failure (the_string @@ get_field "description" obj)
 

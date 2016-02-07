@@ -15,3 +15,12 @@ Executable "glgbot"
   CompiledObject: best
   Install: false
   BuildDepends: lwt, cohttp, cohttp.lwt, yojson, batteries, ppx_blob
+
+Document "telegram_api"
+  Type: ocamlbuild (0.4)
+  BuildTools: ocamldoc
+
+  Title: Telegram API reference
+  Authors: nv-vn
+  XOCamlbuildPath: src/
+  XOCamlbuildModules: Api
