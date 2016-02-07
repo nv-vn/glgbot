@@ -17,9 +17,9 @@ module MyBot = Api.Mk (struct
         | {text = Some text; chat} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg)
         | _ -> Nothing in
       let share_audio song performer title = function
-        | {chat; message_id} -> SendAudio (chat.id, Id song, performer, title, Some message_id) in
+        | {chat; message_id} -> ResendAudio (chat.id, song, performer, title, Some message_id) in
       let free' = function
-        | {chat} -> SendVoice (chat.id, File "data/free.ogg", None) in
+        | {chat} -> SendVoice (chat.id, "data/free.ogg", None, function Success id -> return @@ print_endline id) in
       [{name = "hello"; description = "Greet the user"; run = greet};
        {name = "free"; description = "Free the world from the clutches of proprietary software"; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
        {name = "ocaml"; description = "Shill OCaml"; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"};

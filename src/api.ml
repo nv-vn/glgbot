@@ -247,14 +247,15 @@ module Command = struct
   open Message
   open Batteries.String
 
-  type input = File of string | Id of string
-
+  (* Should the closures return `action`/`action Lwt.t` instead? *)
   type action =
     | Nothing
     | GetMe of (User.user Result.result -> unit Lwt.t)
     | SendMessage of int * string
-    | SendAudio of int * input * string * string * int option
-    | SendVoice of int * input * int option
+    | SendAudio of int * string * string * string * int option * (string Result.result -> unit Lwt.t)
+    | ResendAudio of int * string * string * string * int option
+    | SendVoice of int * string * int option * (string Result.result -> unit Lwt.t)
+    | ResendVoice of int * string * int option
     | GetUpdates of (Update.update list Result.result -> unit Lwt.t)
     | PeekUpdate of (Update.update Result.result -> unit Lwt.t)
     | PopUpdate of (Update.update Result.result -> unit Lwt.t)
@@ -304,9 +305,9 @@ module type TELEGRAM_BOT = sig
 
   val get_me : User.user Result.result Lwt.t
   val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
-  val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> string Result.result Lwt.t
   val resend_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
-  val send_voice : chat_id:int -> voice:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_voice : chat_id:int -> voice:string -> reply_to:int option -> string Result.result Lwt.t
   val resend_voice : chat_id:int -> voice:string -> reply_to:int option -> unit Result.result Lwt.t
   val get_updates : Update.update list Result.result Lwt.t
   val peek_update : Update.update Result.result Lwt.t
@@ -355,7 +356,7 @@ module Mk (B : BOT) = struct
     Cohttp_lwt_body.to_string body >>= fun json ->
     let obj = Yojson.Safe.from_string json in
     return @@ match get_field "ok" obj with
-    | `Bool true -> Result.Success ()
+    | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "audio" obj)
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
   let resend_audio ~chat_id ~audio ~performer ~title ~reply_to =
@@ -376,7 +377,7 @@ module Mk (B : BOT) = struct
     Cohttp_lwt_body.to_string body >>= fun json ->
     let obj = Yojson.Safe.from_string json in
     return @@ match get_field "ok" obj with
-    | `Bool true -> Result.Success ()
+    | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "voice" obj)
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
   let resend_voice ~chat_id ~voice ~reply_to =
@@ -444,10 +445,10 @@ module Mk (B : BOT) = struct
     | Nothing -> return ()
     | GetMe f -> get_me >>= f
     | SendMessage (chat_id, text) -> send_message ~chat_id ~text >>= fun _ -> return ()
-    | SendAudio (chat_id, File audio, performer, title, reply_to) -> send_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun _ -> return ()
-    | SendAudio (chat_id, Id audio, performer, title, reply_to) -> resend_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun _ -> return () (* FIXME *)
-    | SendVoice (chat_id, File voice, reply_to) -> send_voice ~chat_id ~voice ~reply_to >>= fun _ -> return ()
-    | SendVoice (chat_id, Id voice, reply_to) -> resend_voice ~chat_id ~voice ~reply_to >>= fun _ -> return ()
+    | SendAudio (chat_id, audio, performer, title, reply_to, f) -> send_audio ~chat_id ~audio ~performer ~title ~reply_to >>= f
+    | ResendAudio (chat_id, audio, performer, title, reply_to) -> resend_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun _ -> return ()
+    | SendVoice (chat_id, voice, reply_to, f) -> send_voice ~chat_id ~voice ~reply_to >>= f
+    | ResendVoice (chat_id, voice, reply_to) -> resend_voice ~chat_id ~voice ~reply_to >>= fun _ -> return ()
     | GetUpdates f -> get_updates >>= f
     | PeekUpdate f -> peek_update >>= f
     | PopUpdate f -> pop_update () >>= f

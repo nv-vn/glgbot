@@ -97,14 +97,14 @@ module Result : sig
 end
 
 module Command : sig
-  type input = File of string | Id of string
-
   type action =
     | Nothing
     | GetMe of (User.user Result.result -> unit Lwt.t)
     | SendMessage of int * string
-    | SendAudio of int * input * string * string * int option
-    | SendVoice of int * input * int option
+    | SendAudio of int * string * string * string * int option * (string Result.result -> unit Lwt.t)
+    | ResendAudio of int * string * string * string * int option
+    | SendVoice of int * string * int option * (string Result.result -> unit Lwt.t)
+    | ResendVoice of int * string * int option
     | GetUpdates of (Update.update list Result.result -> unit Lwt.t)
     | PeekUpdate of (Update.update Result.result -> unit Lwt.t)
     | PopUpdate of (Update.update Result.result -> unit Lwt.t)
@@ -133,9 +133,9 @@ module type TELEGRAM_BOT = sig
 
   val get_me : User.user Result.result Lwt.t
   val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
-  val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> string Result.result Lwt.t
   val resend_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
-  val send_voice : chat_id:int -> voice:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_voice : chat_id:int -> voice:string -> reply_to:int option -> string Result.result Lwt.t
   val resend_voice : chat_id:int -> voice:string -> reply_to:int option -> unit Result.result Lwt.t
   val get_updates : Update.update list Result.result Lwt.t
   val peek_update : Update.update Result.result Lwt.t
