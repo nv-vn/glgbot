@@ -47,6 +47,21 @@ module Audio : sig
 
   val create : chat_id:int -> audio:string -> ?duration:int option -> performer:string -> title:string -> ?reply_to:int option -> unit -> audio
   val prepare : audio -> string
+  val prepare_multipart : audio -> string -> string Lwt.t
+end
+
+module Voice : sig
+  type voice = {
+    chat_id             : int;
+    voice               : string;
+    duration            : int option;
+    reply_to_message_id : int option;
+    reply_markup        : unit option (* FIXME *)
+  }
+
+  val create : chat_id:int -> voice:string -> ?duration:int option -> ?reply_to:int option -> unit -> voice
+  val prepare : voice -> string
+  val prepare_multipart : voice -> string -> string Lwt.t
 end
 
 module Message : sig
@@ -82,11 +97,14 @@ module Result : sig
 end
 
 module Command : sig
+  type input = File of string | Id of string
+
   type action =
     | Nothing
     | GetMe of (User.user Result.result -> unit Lwt.t)
     | SendMessage of int * string
-    | SendAudio of int * string * string * string * int option
+    | SendAudio of int * input * string * string * int option
+    | SendVoice of int * input * int option
     | GetUpdates of (Update.update list Result.result -> unit Lwt.t)
     | PeekUpdate of (Update.update Result.result -> unit Lwt.t)
     | PopUpdate of (Update.update Result.result -> unit Lwt.t)
@@ -115,7 +133,10 @@ module type TELEGRAM_BOT = sig
 
   val get_me : User.user Result.result Lwt.t
   val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
-  val send_audio: chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
+  val resend_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_voice : chat_id:int -> voice:string -> reply_to:int option -> unit Result.result Lwt.t
+  val resend_voice : chat_id:int -> voice:string -> reply_to:int option -> unit Result.result Lwt.t
   val get_updates : Update.update list Result.result Lwt.t
   val peek_update : Update.update Result.result Lwt.t
   val pop_update : ?run_cmds:bool -> unit -> Update.update Result.result Lwt.t
