@@ -7,6 +7,7 @@ let rec get_field target = function
   | `Assoc (x::xs) when fst x = target -> snd x
   | `Assoc (x::xs) -> get_field target (`Assoc xs)
   | _ -> raise (ApiException "Invalid field access!")
+
 let rec get_opt_field target = function
   | `Assoc [] -> None
   | `Assoc (x::xs) when fst x = target -> Some (snd x)
@@ -247,18 +248,17 @@ module Command = struct
   open Message
   open Batteries.String
 
-  (* Should the closures return `action`/`action Lwt.t` instead? *)
   type action =
     | Nothing
-    | GetMe of (User.user Result.result -> unit Lwt.t)
+    | GetMe of (User.user Result.result -> action)
     | SendMessage of int * string
-    | SendAudio of int * string * string * string * int option * (string Result.result -> unit Lwt.t)
+    | SendAudio of int * string * string * string * int option * (string Result.result -> action)
     | ResendAudio of int * string * string * string * int option
-    | SendVoice of int * string * int option * (string Result.result -> unit Lwt.t)
+    | SendVoice of int * string * int option * (string Result.result -> action)
     | ResendVoice of int * string * int option
-    | GetUpdates of (Update.update list Result.result -> unit Lwt.t)
-    | PeekUpdate of (Update.update Result.result -> unit Lwt.t)
-    | PopUpdate of (Update.update Result.result -> unit Lwt.t)
+    | GetUpdates of (Update.update list Result.result -> action)
+    | PeekUpdate of (Update.update Result.result -> action)
+    | PopUpdate of (Update.update Result.result -> action)
     | Chain of action * action
 
   type command = {
@@ -356,7 +356,7 @@ module Mk (B : BOT) = struct
     Cohttp_lwt_body.to_string body >>= fun json ->
     let obj = Yojson.Safe.from_string json in
     return @@ match get_field "ok" obj with
-    | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "audio" obj)
+    | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "audio" @@ get_field "result" obj)
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
   let resend_audio ~chat_id ~audio ~performer ~title ~reply_to =
@@ -377,7 +377,7 @@ module Mk (B : BOT) = struct
     Cohttp_lwt_body.to_string body >>= fun json ->
     let obj = Yojson.Safe.from_string json in
     return @@ match get_field "ok" obj with
-    | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "voice" obj)
+    | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "voice" @@ get_field "result" obj)
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
   let resend_voice ~chat_id ~voice ~reply_to =
@@ -451,14 +451,14 @@ module Mk (B : BOT) = struct
 
   and evaluator = function
     | Nothing -> return ()
-    | GetMe f -> get_me >>= f
+    | GetMe f -> get_me >>= fun x -> evaluator (f x)
     | SendMessage (chat_id, text) -> send_message ~chat_id ~text >>= fun _ -> return ()
-    | SendAudio (chat_id, audio, performer, title, reply_to, f) -> send_audio ~chat_id ~audio ~performer ~title ~reply_to >>= f
+    | SendAudio (chat_id, audio, performer, title, reply_to, f) -> send_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun x -> evaluator (f x)
     | ResendAudio (chat_id, audio, performer, title, reply_to) -> resend_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun _ -> return ()
-    | SendVoice (chat_id, voice, reply_to, f) -> send_voice ~chat_id ~voice ~reply_to >>= f
+    | SendVoice (chat_id, voice, reply_to, f) -> send_voice ~chat_id ~voice ~reply_to >>= fun x -> evaluator (f x)
     | ResendVoice (chat_id, voice, reply_to) -> resend_voice ~chat_id ~voice ~reply_to >>= fun _ -> return ()
-    | GetUpdates f -> get_updates >>= f
-    | PeekUpdate f -> peek_update >>= f
-    | PopUpdate f -> pop_update () >>= f
+    | GetUpdates f -> get_updates >>= fun x -> evaluator (f x)
+    | PeekUpdate f -> peek_update >>= fun x -> evaluator (f x)
+    | PopUpdate f -> pop_update () >>= fun x -> evaluator (f x)
     | Chain (first, second) -> evaluator first >>= fun _ -> evaluator second
 end

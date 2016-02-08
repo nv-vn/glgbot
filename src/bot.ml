@@ -19,7 +19,8 @@ module MyBot = Api.Mk (struct
       let share_audio song performer title = function
         | {chat; message_id} -> ResendAudio (chat.id, song, performer, title, Some message_id) in
       let free' = function
-        | {chat} -> SendVoice (chat.id, "data/free.ogg", None, function Success id -> return @@ print_endline id) in
+        | {chat} -> SendVoice (chat.id, "data/free.ogg", None, function Success id -> SendMessage (chat.id, "That file's ID is " ^ id)
+                                                                      | Failure er -> SendMessage (chat.id, "Failed to send audio with: " ^ er)) in
       [{name = "hello"; description = "Greet the user"; run = greet};
        {name = "free"; description = "Free the world from the clutches of proprietary software"; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
        {name = "ocaml"; description = "Shill OCaml"; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"};

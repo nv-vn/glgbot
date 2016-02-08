@@ -109,15 +109,15 @@ module Command : sig
   (** The actions that can be used by the bot's commands *)
   type action =
     | Nothing
-    | GetMe of (User.user Result.result -> unit Lwt.t)
+    | GetMe of (User.user Result.result -> action)
     | SendMessage of int * string
-    | SendAudio of int * string * string * string * int option * (string Result.result -> unit Lwt.t)
+    | SendAudio of int * string * string * string * int option * (string Result.result -> action)
     | ResendAudio of int * string * string * string * int option
-    | SendVoice of int * string * int option * (string Result.result -> unit Lwt.t)
+    | SendVoice of int * string * int option * (string Result.result -> action)
     | ResendVoice of int * string * int option
-    | GetUpdates of (Update.update list Result.result -> unit Lwt.t)
-    | PeekUpdate of (Update.update Result.result -> unit Lwt.t)
-    | PopUpdate of (Update.update Result.result -> unit Lwt.t)
+    | GetUpdates of (Update.update list Result.result -> action)
+    | PeekUpdate of (Update.update Result.result -> action)
+    | PopUpdate of (Update.update Result.result -> action)
     | Chain of action * action
 
   (** This type is used to represent available commands. The `name` field is the command's name (without a slash) and the `description` field is the description to be used in the help message. `run` is the function called when invoking the command. *)
