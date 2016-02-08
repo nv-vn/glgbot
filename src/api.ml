@@ -186,23 +186,29 @@ module Message = struct
 
   (* Lots more fields to support... *)
   type message = {
-    message_id : int;
-    from       : User.user option;
-    date       : int;
-    chat       : Chat.chat;
-    text       : string option
+    message_id       : int;
+    from             : User.user option;
+    date             : int;
+    chat             : Chat.chat;
+    forward_from     : User.user option;
+    forward_date     : int option;
+    reply_to_message : message option;
+    text             : string option
   }
 
-  let create ~message_id ?(from = None) ~date ~chat ?(text = None) () =
-    {message_id; from; date; chat; text}
+  let create ~message_id ?(from = None) ~date ~chat ?(forward_from = None) ?(forward_date = None) ?(reply_to = None) ?(text = None) () =
+    {message_id; from; date; chat; forward_from; forward_date; reply_to_message = reply_to; text}
 
-  let read obj =
+  let rec read obj =
     let message_id = the_int @@ get_field "message_id" obj in
     let from = User.read <$> get_opt_field "from" obj in
     let date = the_int @@ get_field "date" obj in
     let chat = Chat.read @@ get_field "chat" obj in
+    let forward_from = User.read <$> get_opt_field "forward_from" obj in
+    let forward_date = the_int <$> get_opt_field "forward_date" obj in
+    let reply_to = read <$> get_opt_field "reply_to_message" obj in
     let text = the_string <$> get_opt_field "text" obj in
-    create ~message_id ~from ~date ~chat ~text ()
+    create ~message_id ~from ~date ~chat ~forward_from ~forward_date ~reply_to ~text ()
 
   let get_sender = function
     | {from = Some user} -> user.first_name

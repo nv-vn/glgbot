@@ -16,6 +16,22 @@ module MyBot = Api.Mk (struct
       let greet = function
         | {text = Some text; chat} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg)
         | _ -> Nothing in
+      let quote = function (* FIXME: Telegram API is seemingly broken... *)
+        | {chat; reply_to_message = Some ({text = Some text} as msg)} ->
+          SendMessage (chat.id, "Quoting " ^ get_sender msg ^ " who said:\n" ^ text)
+        | {chat; reply_to_message = Some msg} ->
+          SendMessage (chat.id, "Quoting " ^ get_sender msg ^ " who said nothing")
+        | {chat} -> SendMessage (chat.id, "Nobody to quote!") in
+      let decide = function
+        | {chat; text = Some text} ->
+          let options = Api.Command.tokenize text in
+          let len = List.length options in
+          if len = 0 then
+            SendMessage (chat.id, "Give me options nerd")
+          else if len = 1 then
+            SendMessage (chat.id, List.nth ["yes"; "no"] (Random.int 2))
+          else
+            SendMessage (chat.id, List.nth options (Random.int len)) in
       let share_audio song performer title = function
         | {chat; message_id} -> ResendAudio (chat.id, song, performer, title, Some message_id) in
       let free' = function
@@ -24,7 +40,9 @@ module MyBot = Api.Mk (struct
       [{name = "hello"; description = "Greet the user"; run = greet};
        {name = "free"; description = "Free the world from the clutches of proprietary software"; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
        {name = "ocaml"; description = "Shill OCaml"; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"};
-       {name = "unfree"; description = "Testing voice API"; run = free'}]
+       {name = "unfree"; description = "Testing voice API"; run = free'};
+       {name = "q"; description = "Save a quote"; run = quote};
+       {name = "decide"; description = "Help make a decision"; run = decide}]
 end)
 
 type 'a result = 'a Api.Result.result

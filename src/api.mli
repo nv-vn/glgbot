@@ -66,13 +66,16 @@ end
 
 module Message : sig
   type message = {
-    message_id : int;
-    from       : User.user option;
-    date       : int;
-    chat       : Chat.chat;
-    text       : string option
+    message_id       : int;
+    from             : User.user option;
+    date             : int;
+    chat             : Chat.chat;
+    forward_from     : User.user option;
+    forward_date     : int option;
+    reply_to_message : message option;
+    text             : string option
   }
-  val create : message_id:int -> ?from:User.user option -> date:int -> chat:Chat.chat -> ?text:string option -> unit -> message
+  val create : message_id:int -> ?from:User.user option -> date:int -> chat:Chat.chat -> ?forward_from:User.user option -> ?forward_date:int option -> ?reply_to:message option -> ?text:string option -> unit -> message
   val read : json -> message
 
   val get_sender : message -> string
