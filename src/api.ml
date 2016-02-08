@@ -279,9 +279,17 @@ module Command = struct
 
   let rec read_command msg cmds = match msg with
     | {text = Some txt; _} -> begin
+        let cmp str cmd =
+          match nsplit str ~by:" " with
+          | [] -> false
+          | a::_ -> begin
+              match nsplit a ~by:"@" with
+              | [] -> false
+              | a::_ -> a = cmd
+            end in
         match cmds with
         | [] -> Nothing
-        | cmd::_ when starts_with txt ("/" ^ cmd.name) -> cmd.run msg
+        | cmd::_ when cmp txt ("/" ^ cmd.name) -> cmd.run msg
         | _::cmds -> read_command msg cmds
       end
     | {text = None} -> Nothing

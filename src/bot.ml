@@ -24,7 +24,14 @@ module MyBot = Api.Mk (struct
         | {chat} -> SendMessage (chat.id, "Nobody to quote!") in
       let decide = function
         | {chat; text = Some text} ->
-          let options = Api.Command.tokenize text in
+          let open Batteries.String in
+          let all = List.filter ((<>) "") @@ List.map strip @@ Api.Command.tokenize text in
+          let rec get_options buf = function
+            | [] -> buf
+            | [a] -> a::buf
+            | a::"or"::b -> get_options (a::buf) b
+            | a::b::c -> get_options buf ((a ^ " " ^ b)::c) in
+          let options = get_options [] all in
           let len = List.length options in
           if len = 0 then
             SendMessage (chat.id, "Give me options nerd")
@@ -34,13 +41,13 @@ module MyBot = Api.Mk (struct
             SendMessage (chat.id, List.nth options (Random.int len)) in
       let share_audio song performer title = function
         | {chat; message_id} -> ResendAudio (chat.id, song, performer, title, Some message_id) in
-      let free' = function
+      let unfree = function
         | {chat} -> SendVoice (chat.id, "data/free.ogg", None, function Success id -> SendMessage (chat.id, "That file's ID is " ^ id)
                                                                       | Failure er -> SendMessage (chat.id, "Failed to send audio with: " ^ er)) in
       [{name = "hello"; description = "Greet the user"; run = greet};
        {name = "free"; description = "Free the world from the clutches of proprietary software"; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
        {name = "ocaml"; description = "Shill OCaml"; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"};
-       {name = "unfree"; description = "Testing voice API"; run = free'};
+       {name = "unfree"; description = "Testing voice API"; run = unfree};
        {name = "q"; description = "Save a quote"; run = quote};
        {name = "decide"; description = "Help make a decision"; run = decide}]
 end)

@@ -144,6 +144,8 @@ module Command : sig
   val tokenize : string -> string list
 end
 
+(** BOT is strictly used for customization of a TELEGRAM_BOT module. Once your customizations have been applied, pass it into Api.Mk to create
+    the usable TELEGRAM_BOT interface. *)
 module type BOT = sig
   (** The API token to use for the bot. Warning: please use ppx_blob to load this in at compile-time and add the blob to your .gitignore *)
   val token : string
@@ -152,6 +154,7 @@ module type BOT = sig
   val commands : Command.command list
 end
 
+(** TELEGRAM_BOT represents the interface to a running bot *)
 module type TELEGRAM_BOT = sig
   (** The base url for all connections to the API *)
   val url : string
