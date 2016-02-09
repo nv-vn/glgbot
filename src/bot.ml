@@ -98,6 +98,6 @@ let rec main () =
   let rec loop () =
     MyBot.pop_update () >>= process >>= loop in
   try Lwt_main.run @@ loop ()
-  with Unix.Unix_error (_, _, _) -> main ()
+  with _ -> main ()
 
 let _ = main ()

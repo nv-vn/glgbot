@@ -99,9 +99,8 @@ module InputFile = struct
   open Lwt
 
   let load (file:string) =
-    let fstream = Lwt_io.lines_of_file file in
-      Lwt_stream.next fstream >>= fun first ->
-      Lwt_stream.fold (fun line lines -> lines ^ "\n" ^ line) fstream first
+    let open Lwt_io in
+    with_file ~mode:input file read
 
   let multipart_body fields (name, file, mime) boundary' =
     let boundary = "--" ^ boundary' in
