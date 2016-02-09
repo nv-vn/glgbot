@@ -121,48 +121,59 @@ module InputFile = struct
 end
 
 module Audio = struct
-  type audio = { (* FIXME: Make distinction between outgoing & normal audio *)
-    chat_id             : int;
-    audio               : string;
-    duration            : int option;
-    performer           : string;
-    title               : string;
-    reply_to_message_id : int option;
-    reply_markup        : unit option (* FIXME *)
+  type audio = {
+    file_id   : string;
+    duration  : int;
+    performer : string option;
+    title     : string option;
+    mime_type : string option;
+    file_size : int option
   }
 
-  let create ~chat_id ~audio ?(duration = None) ~performer ~title ?(reply_to = None) () =
-    {chat_id; audio; duration; performer; title; reply_to_message_id = reply_to; reply_markup = None}
+  let create ~file_id ~duration ?(performer = None) ?(title = None) ?(mime_type = None) ?(file_size = None) () =
+    {file_id; duration; performer; title; mime_type; file_size}
 
   let read obj =
-    let chat_id = the_int @@ get_field "chat_id" obj in
-    let audio = the_string @@ get_field "audio" obj in
-    let duration = the_int <$> get_opt_field "duration" obj in
-    let performer = match the_string <$> get_opt_field "performer" obj with (* Not strictly required... *)
-      | None -> "Unknown"
-      | Some p -> p in
-    let title = match the_string <$> get_opt_field "title" obj with (* Not strictly required... *)
-      | None -> "Unknown"
-      | Some t -> t in
-    {chat_id; audio; duration; performer; title; reply_to_message_id = None; reply_markup = None}
+    let file_id = the_string @@ get_field "file_id" obj in
+    let duration = the_int @@ get_field "duration" obj in
+    let performer = the_string <$> get_opt_field "performer" obj in
+    let title = the_string <$> get_opt_field "title" obj in
+    let mime_type = the_string <$> get_opt_field "mime_type" obj in
+    let file_size = the_int <$> get_opt_field "file_size" obj in
+    create ~file_id ~duration ~performer ~title ~mime_type ~file_size ()
 
-  let prepare = function
+  module Out = struct
+    type audio = { (* FIXME: Make distinction between outgoing & normal audio *)
+      chat_id             : int;
+      audio               : string;
+      duration            : int option;
+      performer           : string;
+      title               : string;
+      reply_to_message_id : int option;
+      reply_markup        : unit option (* FIXME *)
+    }
+
+    let create ~chat_id ~audio ?(duration = None) ~performer ~title ?(reply_to = None) () =
+      {chat_id; audio; duration; performer; title; reply_to_message_id = reply_to; reply_markup = None}
+
+    let prepare = function
     | {chat_id; audio; duration; performer; title; reply_to_message_id; reply_markup} ->
-        let json = `Assoc ([("chat_id", `Int chat_id);
-                            ("audio", `String audio);
-                            ("performer", `String performer);
-                            ("title", `String title)] +? ("duration", this_int <$> duration)
-                                                      +? ("reply_to_message_id", this_int <$> reply_to_message_id)) in
-        Yojson.Safe.to_string json
+      let json = `Assoc ([("chat_id", `Int chat_id);
+                          ("audio", `String audio);
+                          ("performer", `String performer);
+                          ("title", `String title)] +? ("duration", this_int <$> duration)
+                                                    +? ("reply_to_message_id", this_int <$> reply_to_message_id)) in
+      Yojson.Safe.to_string json
 
-  let prepare_multipart = function
-    | {chat_id; audio; duration; performer; title; reply_to_message_id} ->
-      let fields = [("chat_id", string_of_int chat_id);
-                    ("audio", audio);
-                    ("performer", performer);
-                    ("title", title)] +? ("duration", string_of_int <$> duration)
-                                      +? ("reply_to_message_id", string_of_int <$> reply_to_message_id) in
-      InputFile.multipart_body fields ("audio", audio, "audio/mpeg")
+    let prepare_multipart = function
+      | {chat_id; audio; duration; performer; title; reply_to_message_id} ->
+        let fields = [("chat_id", string_of_int chat_id);
+                      ("audio", audio);
+                      ("performer", performer);
+                      ("title", title)] +? ("duration", string_of_int <$> duration)
+                                        +? ("reply_to_message_id", string_of_int <$> reply_to_message_id) in
+        InputFile.multipart_body fields ("audio", audio, "audio/mpeg")
+  end
 end
 
 module Voice = struct
@@ -221,7 +232,7 @@ module Message = struct
     let forward_date = the_int <$> get_opt_field "forward_date" obj in
     let reply_to = read <$> get_opt_field "reply_to_message" obj in
     let text = the_string <$> get_opt_field "text" obj in
-    let audio = None (* Audio.read <$> get_opt_field "audio" obj *) in
+    let audio = Audio.read <$> get_opt_field "audio" obj in
     create ~message_id ~from ~date ~chat ~forward_from ~forward_date ~reply_to ~text ~audio ()
 
   let get_sender = function
@@ -378,7 +389,7 @@ module Mk (B : BOT) = struct
 
   let send_audio ~chat_id ~audio ~performer ~title ~reply_to =
     let boundary = "---1234567890" in
-    Audio.prepare_multipart (Audio.create ~chat_id ~audio ~performer ~title ~reply_to ()) boundary >>= fun body ->
+    Audio.Out.prepare_multipart (Audio.Out.create ~chat_id ~audio ~performer ~title ~reply_to ()) boundary >>= fun body ->
     let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendAudio")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -388,7 +399,7 @@ module Mk (B : BOT) = struct
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
   let resend_audio ~chat_id ~audio ~performer ~title ~reply_to =
-    let body = Audio.prepare @@ Audio.create ~chat_id ~audio ~performer ~title ~reply_to () in
+    let body = Audio.Out.prepare @@ Audio.Out.create ~chat_id ~audio ~performer ~title ~reply_to () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendAudio")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->

@@ -11,6 +11,7 @@ module MyBot = Api.Mk (struct
     open Api.Update
     open Api.Command
     open Api.Message
+    open Api.Audio.Out
 
     let token = [%blob "../bot.token"] (* Remember, we start from _build/ *)
     let commands =
@@ -45,6 +46,25 @@ module MyBot = Api.Mk (struct
           else
             SendMessage (chat.id, List.nth options (Random.int len))
         | _ -> Nothing in
+      let jukebox = function
+        | {chat; text = Some text; reply_to_message = Some {audio = Some {file_id}}} -> begin
+            let open Batteries.String in
+            let (_, info) = split text ~by:" " in
+            let (performer, title) = split info ~by:"-" in
+            Db.Jukebox.put ~title:(trim @@ title) ~performer ~file_id ();
+            SendMessage (chat.id, "Added " ^ info ^ " to the database!")
+          end
+        | {chat; message_id; text = Some text} -> begin
+            let open Batteries.String in
+            match tokenize text with
+            | [] -> SendMessage (chat.id, concat "\n" (Db.Jukebox.list ()))
+            | xs -> begin
+                let song = trim @@ concat " " xs in
+                let (title, performer, file_id) = Db.Jukebox.search ~title:song in
+                ResendAudio (chat.id, file_id, performer, title, Some message_id)
+              end
+          end
+        | {chat} -> SendMessage (chat.id, "Invalid input") in
       let share_audio song performer title = function
         | {chat; message_id} -> ResendAudio (chat.id, song, performer, title, Some message_id) in
       let unfree = function
@@ -56,6 +76,7 @@ module MyBot = Api.Mk (struct
        {name = "dab"; description = "Pipe it up"; run = share_audio "BQADAQADcwADi_LrCbRvyK66JIVTAg" "Migos" "Pipe It Up"};
        {name = "unfree"; description = "Testing voice API"; run = unfree};
        {name = "q"; description = "Save a quote"; run = quote};
+       {name = "jukebox"; description = "Store and play music"; run = jukebox};
        {name = "decide"; description = "Help make a decision"; run = decide}]
 end)
 

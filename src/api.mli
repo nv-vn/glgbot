@@ -36,19 +36,31 @@ end
 
 module Audio : sig
   type audio = {
-    chat_id             : int;
-    audio               : string;
-    duration            : int option;
-    performer           : string;
-    title               : string;
-    reply_to_message_id : int option;
-    reply_markup        : unit option (* FIXME *)
+    file_id   : string;
+    duration  : int;
+    performer : string option;
+    title     : string option;
+    mime_type : string option;
+    file_size : int option
   }
-
-  val create : chat_id:int -> audio:string -> ?duration:int option -> performer:string -> title:string -> ?reply_to:int option -> unit -> audio
+  val create : file_id:string -> duration:int -> ?performer:string option -> ?title:string option -> ?mime_type:string option -> ?file_size:int option -> unit -> audio
   val read : json -> audio
-  val prepare : audio -> string
-  val prepare_multipart : audio -> string -> string Lwt.t
+
+  module Out : sig
+    type audio = {
+      chat_id             : int;
+      audio               : string;
+      duration            : int option;
+      performer           : string;
+      title               : string;
+      reply_to_message_id : int option;
+      reply_markup        : unit option (* FIXME *)
+    }
+
+    val create : chat_id:int -> audio:string -> ?duration:int option -> performer:string -> title:string -> ?reply_to:int option -> unit -> audio
+    val prepare : audio -> string
+    val prepare_multipart : audio -> string -> string Lwt.t
+ end
 end
 
 module Voice : sig

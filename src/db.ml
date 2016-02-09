@@ -22,6 +22,7 @@ end
 module Jukebox = struct
   let (_, put)   = [%gensqlite db "INSERT INTO jukebox (title, performer, file_id) VALUES (%s{title}, %s{performer}, %s{file_id})"]
   let (_, get)   = [%gensqlite db "SELECT @s{title}, @s{performer}, @s{file_id} FROM jukebox WHERE title LIKE %s{title}"]
+  let (_, all)   = [%gensqlite db "SELECT @s{title}, @s{performer} FROM jukebox"]
   let (_, size)  = [%gensqlite db "SELECT count(*) AS @d{c} FROM jukebox"]
   let (_, clear) = [%gensqlite db "DELETE FROM jukebox"]
 
@@ -29,4 +30,7 @@ module Jukebox = struct
     match get ~title () with
     | [] -> ("Unknown", "Unknown", "Unknown")
     | x::_ -> x
+
+  let list () =
+    List.map (fun (title, performer) -> performer ^ " - " ^ title) (all ())
 end
