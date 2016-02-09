@@ -121,7 +121,7 @@ module InputFile = struct
 end
 
 module Audio = struct
-  type audio = {
+  type audio = { (* FIXME: Make distinction between outgoing & normal audio *)
     chat_id             : int;
     audio               : string;
     duration            : int option;
@@ -133,6 +133,18 @@ module Audio = struct
 
   let create ~chat_id ~audio ?(duration = None) ~performer ~title ?(reply_to = None) () =
     {chat_id; audio; duration; performer; title; reply_to_message_id = reply_to; reply_markup = None}
+
+  let read obj =
+    let chat_id = the_int @@ get_field "chat_id" obj in
+    let audio = the_string @@ get_field "audio" obj in
+    let duration = the_int <$> get_opt_field "duration" obj in
+    let performer = match the_string <$> get_opt_field "performer" obj with (* Not strictly required... *)
+      | None -> "Unknown"
+      | Some p -> p in
+    let title = match the_string <$> get_opt_field "title" obj with (* Not strictly required... *)
+      | None -> "Unknown"
+      | Some t -> t in
+    {chat_id; audio; duration; performer; title; reply_to_message_id = None; reply_markup = None}
 
   let prepare = function
     | {chat_id; audio; duration; performer; title; reply_to_message_id; reply_markup} ->
@@ -193,11 +205,12 @@ module Message = struct
     forward_from     : User.user option;
     forward_date     : int option;
     reply_to_message : message option;
-    text             : string option
+    text             : string option;
+    audio            : Audio.audio option
   }
 
-  let create ~message_id ?(from = None) ~date ~chat ?(forward_from = None) ?(forward_date = None) ?(reply_to = None) ?(text = None) () =
-    {message_id; from; date; chat; forward_from; forward_date; reply_to_message = reply_to; text}
+  let create ~message_id ?(from = None) ~date ~chat ?(forward_from = None) ?(forward_date = None) ?(reply_to = None) ?(text = None)?(audio = None) () =
+    {message_id; from; date; chat; forward_from; forward_date; reply_to_message = reply_to; text; audio}
 
   let rec read obj =
     let message_id = the_int @@ get_field "message_id" obj in
@@ -208,7 +221,8 @@ module Message = struct
     let forward_date = the_int <$> get_opt_field "forward_date" obj in
     let reply_to = read <$> get_opt_field "reply_to_message" obj in
     let text = the_string <$> get_opt_field "text" obj in
-    create ~message_id ~from ~date ~chat ~forward_from ~forward_date ~reply_to ~text ()
+    let audio = None (* Audio.read <$> get_opt_field "audio" obj *) in
+    create ~message_id ~from ~date ~chat ~forward_from ~forward_date ~reply_to ~text ~audio ()
 
   let get_sender = function
     | {from = Some user} -> user.first_name

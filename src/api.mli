@@ -46,6 +46,7 @@ module Audio : sig
   }
 
   val create : chat_id:int -> audio:string -> ?duration:int option -> performer:string -> title:string -> ?reply_to:int option -> unit -> audio
+  val read : json -> audio
   val prepare : audio -> string
   val prepare_multipart : audio -> string -> string Lwt.t
 end
@@ -73,9 +74,10 @@ module Message : sig
     forward_from     : User.user option;
     forward_date     : int option;
     reply_to_message : message option;
-    text             : string option
+    text             : string option;
+    audio            : Audio.audio option
   }
-  val create : message_id:int -> ?from:User.user option -> date:int -> chat:Chat.chat -> ?forward_from:User.user option -> ?forward_date:int option -> ?reply_to:message option -> ?text:string option -> unit -> message
+  val create : message_id:int -> ?from:User.user option -> date:int -> chat:Chat.chat -> ?forward_from:User.user option -> ?forward_date:int option -> ?reply_to:message option -> ?text:string option -> ?audio:Audio.audio option -> unit -> message
   val read : json -> message
 
   val get_sender : message -> string
