@@ -34,6 +34,17 @@ module InputFile : sig
   val multipart_body : (string * string) list -> string * string * string -> string -> string Lwt.t
 end
 
+module PhotoSize : sig
+  type photo_size = {
+    file_id   : string;
+    width     : int;
+    height    : int;
+    file_size : int option
+  }
+  val create : file_id:string -> width:int -> height:int -> ?file_size:int option -> unit -> photo_size
+  val read : json -> photo_size
+end
+
 module Audio : sig
   type audio = {
     file_id   : string;
@@ -63,18 +74,87 @@ module Audio : sig
  end
 end
 
+module Document : sig
+  type document = {
+    file_id   : string;
+    thumb     : PhotoSize.photo_size option;
+    file_name : string option;
+    mime_type : string option;
+    file_size : int option
+  }
+  val create : file_id:string -> ?thumb:PhotoSize.photo_size option -> ?file_name:string option -> ?mime_type:string option -> ?file_size:int option -> unit -> document
+  val read : json -> document
+end
+
+module Sticker : sig
+  type sticker = {
+    file_id   : string;
+    width     : int;
+    height    : int;
+    thumb     : PhotoSize.photo_size option;
+    file_size : int option
+  }
+  val create : file_id:string -> width:int -> height:int -> ?thumb:PhotoSize.photo_size option -> ?file_size:int option -> unit -> sticker
+  val read : json -> sticker
+end
+
+module Video : sig
+  type video = {
+    file_id   : string;
+    width     : int;
+    height    : int;
+    duration  : int;
+    thumb     : PhotoSize.photo_size option;
+    mime_type : string option;
+    file_size : int option
+  }
+  val create : file_id:string -> width:int -> height:int -> duration:int -> ?thumb:PhotoSize.photo_size option -> ?mime_type:string option -> ?file_size:int option -> unit -> video
+  val read : json -> video
+end
+
 module Voice : sig
   type voice = {
-    chat_id             : int;
-    voice               : string;
-    duration            : int option;
-    reply_to_message_id : int option;
-    reply_markup        : unit option (* FIXME *)
+    file_id   : string;
+    duration  : int;
+    mime_type : string option;
+    file_size : int option
   }
+  val create : file_id:string -> duration:int -> ?mime_type:string option -> ?file_size:int option -> unit -> voice
+  val read : json -> voice
 
-  val create : chat_id:int -> voice:string -> ?duration:int option -> ?reply_to:int option -> unit -> voice
-  val prepare : voice -> string
-  val prepare_multipart : voice -> string -> string Lwt.t
+  module Out : sig
+    type voice = {
+      chat_id             : int;
+      voice               : string;
+      duration            : int option;
+      reply_to_message_id : int option;
+      reply_markup        : unit option (* FIXME *)
+    }
+
+    val create : chat_id:int -> voice:string -> ?duration:int option -> ?reply_to:int option -> unit -> voice
+    val prepare : voice -> string
+    val prepare_multipart : voice -> string -> string Lwt.t
+  end
+end
+
+module Contact : sig
+  type contact = {
+    phone_number : string;
+    first_name   : string;
+    last_name    : string option;
+    user_id      : int option
+  }
+  val create : phone_number:string -> first_name:string -> ?last_name:string option -> ?user_id:int option -> unit -> contact
+  val read : json -> contact
+end
+
+module Location : sig
+  type location = {
+    longitude : float;
+    latitude  : float
+  }
+  val create : longitude:float -> latitude:float -> unit -> location
+  val read : json -> location
 end
 
 module Message : sig
@@ -87,9 +167,17 @@ module Message : sig
     forward_date     : int option;
     reply_to_message : message option;
     text             : string option;
-    audio            : Audio.audio option
+    audio            : Audio.audio option;
+    document         : Document.document option;
+    photo            : PhotoSize.photo_size list option;
+    sticker          : Sticker.sticker option;
+    video            : Video.video option;
+    voice            : Voice.voice option;
+    caption          : string option;
+    contact          : Contact.contact option;
+    location         : Location.location option
   }
-  val create : message_id:int -> ?from:User.user option -> date:int -> chat:Chat.chat -> ?forward_from:User.user option -> ?forward_date:int option -> ?reply_to:message option -> ?text:string option -> ?audio:Audio.audio option -> unit -> message
+  val create : message_id:int -> ?from:User.user option -> date:int -> chat:Chat.chat -> ?forward_from:User.user option -> ?forward_date:int option -> ?reply_to:message option -> ?text:string option -> ?audio:Audio.audio option -> ?document:Document.document option -> ?photo:PhotoSize.photo_size list option -> ?sticker:Sticker.sticker option -> ?video:Video.video option -> ?voice:Voice.voice option -> ?caption:string option -> ?contact:Contact.contact option -> ?location:Location.location option -> unit -> message
   val read : json -> message
 
   val get_sender : message -> string

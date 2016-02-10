@@ -34,6 +34,12 @@ let the_int = function
 
 let this_int x = `Int x
 
+let the_float = function
+  | `Float float -> float
+  | _ -> raise (ApiException "Type assertion failed!")
+
+let this_float x = `Float x
+
 let the_list = function
   | `List list -> list
   | _ -> raise (ApiException "Type assertion failed!")
@@ -119,6 +125,25 @@ module InputFile = struct
     return @@ field_bodies ^ file_body ^ ending
 end
 
+module PhotoSize = struct
+  type photo_size = {
+    file_id   : string;
+    width     : int;
+    height    : int;
+    file_size : int option
+  }
+
+  let create ~file_id ~width ~height ?(file_size = None) () =
+    {file_id; width; height; file_size}
+
+  let read obj =
+    let file_id = the_string @@ get_field "file_id" obj in
+    let width = the_int @@ get_field "width" obj in
+    let height = the_int @@ get_field "height" obj in
+    let file_size = the_int <$> get_opt_field "file_size" obj in
+    create ~file_id ~width ~height ~file_size ()
+end
+
 module Audio = struct
   type audio = {
     file_id   : string;
@@ -142,7 +167,7 @@ module Audio = struct
     create ~file_id ~duration ~performer ~title ~mime_type ~file_size ()
 
   module Out = struct
-    type audio = { (* FIXME: Make distinction between outgoing & normal audio *)
+    type audio = {
       chat_id             : int;
       audio               : string;
       duration            : int option;
@@ -175,31 +200,151 @@ module Audio = struct
   end
 end
 
-module Voice = struct
-  type voice = {
-    chat_id             : int;
-    voice               : string;
-    duration            : int option;
-    reply_to_message_id : int option;
-    reply_markup        : unit option (* FIXME *)
+module Document = struct
+  type document = {
+    file_id   : string;
+    thumb     : PhotoSize.photo_size option;
+    file_name : string option;
+    mime_type : string option;
+    file_size : int option
   }
 
-  let create ~chat_id ~voice ?(duration = None) ?(reply_to = None) () =
-    {chat_id; voice; duration; reply_to_message_id = reply_to; reply_markup = None}
+  let create ~file_id ?(thumb = None) ?(file_name = None) ?(mime_type = None) ?(file_size = None) () =
+    {file_id; thumb; file_name; mime_type; file_size}
 
-  let prepare = function
-    | {chat_id; voice; duration; reply_to_message_id} ->
-      let json = `Assoc ([("chat_id", `Int chat_id);
-                          ("voice", `String voice)] +? ("duration", this_int <$> duration)
-                                                    +? ("reply_to_message_id", this_int <$> reply_to_message_id)) in
-      Yojson.Safe.to_string json
+  let read obj =
+    let file_id = the_string @@ get_field "file_id" obj in
+    let thumb = PhotoSize.read <$> get_opt_field "thumb" obj in
+    let file_name = the_string <$> get_opt_field "file_name" obj in
+    let mime_type = the_string <$> get_opt_field "mime_type" obj in
+    let file_size = the_int <$> get_opt_field "file_size" obj in
+    create ~file_id ~thumb ~file_name ~mime_type ~file_size ()
+end
 
-  let prepare_multipart = function
-    | {chat_id; voice; duration; reply_to_message_id} ->
-      let fields = [("chat_id", string_of_int chat_id);
-                    ("voice", voice)] +? ("duration", string_of_int <$> duration)
-                                      +? ("reply_to_message_id", string_of_int <$> reply_to_message_id) in
-      InputFile.multipart_body fields ("voice", voice, "audio/ogg")
+module Sticker = struct
+  type sticker = {
+    file_id   : string;
+    width     : int;
+    height    : int;
+    thumb     : PhotoSize.photo_size option;
+    file_size : int option
+  }
+
+  let create ~file_id ~width ~height ?(thumb = None) ?(file_size = None) () =
+    {file_id; width; height; thumb; file_size}
+
+  let read obj =
+    let file_id = the_string @@ get_field "file_id" obj in
+    let width = the_int @@ get_field "width" obj in
+    let height = the_int @@ get_field "height" obj in
+    let thumb = PhotoSize.read <$> get_opt_field "thumb" obj in
+    let file_size = the_int <$> get_opt_field "file_size" obj in
+    create ~file_id ~width ~height ~thumb ~file_size ()
+end
+
+module Video = struct
+  type video = {
+    file_id   : string;
+    width     : int;
+    height    : int;
+    duration  : int;
+    thumb     : PhotoSize.photo_size option;
+    mime_type : string option;
+    file_size : int option
+  }
+
+  let create ~file_id ~width ~height ~duration ?(thumb = None) ?(mime_type = None) ?(file_size = None) () =
+    {file_id; width; height; duration; thumb; mime_type; file_size}
+
+  let read obj =
+    let file_id = the_string @@ get_field "file_id" obj in
+    let width = the_int @@ get_field "width" obj in
+    let height = the_int @@ get_field "height" obj in
+    let duration = the_int @@ get_field "duration" obj in
+    let thumb = PhotoSize.read <$> get_opt_field "thumb" obj in
+    let mime_type = the_string <$> get_opt_field "mime_type" obj in
+    let file_size = the_int <$> get_opt_field "file_size" obj in
+    create ~file_id ~width ~height ~duration ~thumb ~mime_type ~file_size ()
+end
+
+module Voice = struct
+  type voice = {
+    file_id   : string;
+    duration  : int;
+    mime_type : string option;
+    file_size : int option
+  }
+
+  let create ~file_id ~duration ?(mime_type = None) ?(file_size = None) () =
+    {file_id; duration; mime_type; file_size}
+
+  let read obj =
+    let file_id = the_string @@ get_field "file_id" obj in
+    let duration = the_int @@ get_field "duration" obj in
+    let mime_type = the_string <$> get_opt_field "mime_type" obj in
+    let file_size = the_int <$> get_opt_field "file_size" obj in
+    create ~file_id ~duration ~mime_type ~file_size ()
+
+  module Out = struct
+    type voice = {
+      chat_id             : int;
+      voice               : string;
+      duration            : int option;
+      reply_to_message_id : int option;
+      reply_markup        : unit option (* FIXME *)
+    }
+
+    let create ~chat_id ~voice ?(duration = None) ?(reply_to = None) () =
+      {chat_id; voice; duration; reply_to_message_id = reply_to; reply_markup = None}
+
+    let prepare = function
+      | {chat_id; voice; duration; reply_to_message_id} ->
+        let json = `Assoc ([("chat_id", `Int chat_id);
+                            ("voice", `String voice)] +? ("duration", this_int <$> duration)
+                                                      +? ("reply_to_message_id", this_int <$> reply_to_message_id)) in
+        Yojson.Safe.to_string json
+
+    let prepare_multipart = function
+      | {chat_id; voice; duration; reply_to_message_id} ->
+        let fields = [("chat_id", string_of_int chat_id);
+                      ("voice", voice)] +? ("duration", string_of_int <$> duration)
+                                        +? ("reply_to_message_id", string_of_int <$> reply_to_message_id) in
+        InputFile.multipart_body fields ("voice", voice, "audio/ogg")
+  end
+end
+
+module Contact = struct
+  type contact = {
+    phone_number : string;
+    first_name   : string;
+    last_name    : string option;
+    user_id      : int option
+  }
+
+  let create ~phone_number ~first_name ?(last_name = None) ?(user_id = None) () =
+    {phone_number; first_name; last_name; user_id}
+
+  let read obj =
+    let phone_number = the_string @@ get_field "phone_number" obj in
+    let first_name = the_string @@ get_field "first_name" obj in
+    let last_name = the_string <$> get_opt_field "last_name" obj in
+    let user_id = the_int <$> get_opt_field "user_id" obj in
+    create ~phone_number ~first_name ~last_name ~user_id ()
+end
+
+module Location = struct
+  type location = {
+    longitude : float;
+    latitude  : float
+  }
+
+  let create ~longitude ~latitude () =
+    {longitude; latitude}
+
+  let read obj =
+    let longitude = the_float @@ get_field "longitude" obj in
+    let latitude = the_float @@ get_field "latitude" obj in
+    create ~longitude ~latitude ()
 end
 
 module Message = struct
@@ -216,11 +361,19 @@ module Message = struct
     forward_date     : int option;
     reply_to_message : message option;
     text             : string option;
-    audio            : Audio.audio option
+    audio            : Audio.audio option;
+    document         : Document.document option;
+    photo            : PhotoSize.photo_size list option;
+    sticker          : Sticker.sticker option;
+    video            : Video.video option;
+    voice            : Voice.voice option;
+    caption          : string option;
+    contact          : Contact.contact option;
+    location         : Location.location option
   }
 
-  let create ~message_id ?(from = None) ~date ~chat ?(forward_from = None) ?(forward_date = None) ?(reply_to = None) ?(text = None)?(audio = None) () =
-    {message_id; from; date; chat; forward_from; forward_date; reply_to_message = reply_to; text; audio}
+  let create ~message_id ?(from = None) ~date ~chat ?(forward_from = None) ?(forward_date = None) ?(reply_to = None) ?(text = None) ?(audio = None) ?(document = None) ?(photo = None) ?(sticker = None) ?(video = None) ?(voice = None) ?(caption = None) ?(contact = None) ?(location = None) () =
+    {message_id; from; date; chat; forward_from; forward_date; reply_to_message = reply_to; text; audio; document; photo; sticker; video; voice; caption; contact; location}
 
   let rec read obj =
     let message_id = the_int @@ get_field "message_id" obj in
@@ -232,7 +385,15 @@ module Message = struct
     let reply_to = read <$> get_opt_field "reply_to_message" obj in
     let text = the_string <$> get_opt_field "text" obj in
     let audio = Audio.read <$> get_opt_field "audio" obj in
-    create ~message_id ~from ~date ~chat ~forward_from ~forward_date ~reply_to ~text ~audio ()
+    let document = Document.read <$> get_opt_field "document" obj in
+    let photo = List.map PhotoSize.read <$> (the_list <$> get_opt_field "photo" obj) in
+    let sticker = Sticker.read <$> get_opt_field "sticker" obj in
+    let video = Video.read <$> get_opt_field "video" obj in
+    let voice = Voice.read <$> get_opt_field "voice" obj in
+    let caption = the_string <$> get_opt_field "caption" obj in
+    let contact = Contact.read <$> get_opt_field "caption" obj in
+    let location = Location.read <$> get_opt_field "location" obj in
+    create ~message_id ~from ~date ~chat ~forward_from ~forward_date ~reply_to ~text ~audio ~document ~photo ~sticker ~video ~voice ~caption ~contact ~location ()
 
   let get_sender = function
     | {from = Some user} -> user.first_name
@@ -409,7 +570,7 @@ module Mk (B : BOT) = struct
 
   let send_voice ~chat_id ~voice ~reply_to =
     let boundary = "---1234567890" in
-    Voice.prepare_multipart (Voice.create ~chat_id ~voice ~reply_to ()) boundary >>= fun body ->
+    Voice.Out.prepare_multipart (Voice.Out.create ~chat_id ~voice ~reply_to ()) boundary >>= fun body ->
     let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendVoice")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -419,7 +580,7 @@ module Mk (B : BOT) = struct
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
   let resend_voice ~chat_id ~voice ~reply_to =
-    let body = Voice.prepare @@ Voice.create ~chat_id ~voice ~reply_to () in
+    let body = Voice.Out.prepare @@ Voice.Out.create ~chat_id ~voice ~reply_to () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendVoice")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
