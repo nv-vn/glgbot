@@ -391,7 +391,7 @@ module Message = struct
     let video = Video.read <$> get_opt_field "video" obj in
     let voice = Voice.read <$> get_opt_field "voice" obj in
     let caption = the_string <$> get_opt_field "caption" obj in
-    let contact = Contact.read <$> get_opt_field "caption" obj in
+    let contact = Contact.read <$> get_opt_field "contact" obj in
     let location = Location.read <$> get_opt_field "location" obj in
     create ~message_id ~from ~date ~chat ~forward_from ~forward_date ~reply_to ~text ~audio ~document ~photo ~sticker ~video ~voice ~caption ~contact ~location ()
 
