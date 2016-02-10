@@ -19,6 +19,20 @@ module MyBot = Api.Mk (struct
       let greet = function
         | {text = Some text; chat} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg)
         | _ -> Nothing in
+      let meow_cache = ref [] in
+      let meow = function
+        | {chat} -> begin
+            if !meow_cache = [] then
+              Lwt_main.run (Reddit.get_images ~num:100 "meow_irl" >>= fun images ->
+                            meow_cache := images;
+                            return ())
+            else ();
+            let len = List.length !meow_cache in
+            if len = 0 then
+              SendMessage (chat.id, "Couldn't load any images")
+            else
+              SendMessage (chat.id, List.nth !meow_cache (Random.int len))
+          end in
       let quote = function
         | {chat; reply_to_message = Some ({text = Some text} as msg)} ->
           Db.Quotes.put ~quote:text ~who:(get_sender msg) ();
@@ -71,6 +85,7 @@ module MyBot = Api.Mk (struct
         | {chat} -> SendVoice (chat.id, "data/free.ogg", None, function Success id -> SendMessage (chat.id, "That file's ID is " ^ id)
                                                                       | Failure er -> SendMessage (chat.id, "Failed to send audio with: " ^ er)) in
       [{name = "hello"; description = "Greet the user"; run = greet};
+       {name = "meow"; description = "Load images from /r/meow_irl"; run = meow};
        {name = "free"; description = "Free the world from the clutches of proprietary software"; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
        {name = "ocaml"; description = "Shill OCaml"; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"};
        {name = "dab"; description = "Pipe it up"; run = share_audio "BQADAQADcwADi_LrCbRvyK66JIVTAg" "Migos" "Pipe It Up"};

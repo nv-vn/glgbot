@@ -12,7 +12,7 @@ module Quotes = struct
     let max = match size () with
       | [] -> 0
       | x::_ -> x in
-    let index = if max > 1 then (Random.int (max - 1)) + 1 else 1 in (* Range is 0...count *)
+    let index = if max > 1 then (Random.int max) + 1 else 1 in (* Range is 0...count *)
     match get ~index () with
     | [] -> print_endline ("Index " ^ string_of_int index ^ " not found in database");
     ("Error", "Error", 0)
