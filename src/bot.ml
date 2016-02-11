@@ -84,15 +84,19 @@ module MyBot = Api.Mk (struct
       let unfree = function
         | {chat} -> SendVoice (chat.id, "data/free.ogg", None, function Success id -> SendMessage (chat.id, "That file's ID is " ^ id)
                                                                       | Failure er -> SendMessage (chat.id, "Failed to send audio with: " ^ er)) in
-      [{name = "hello"; description = "Greet the user"; run = greet};
-       {name = "meow"; description = "Load images from /r/meow_irl"; run = meow};
-       {name = "free"; description = "Free the world from the clutches of proprietary software"; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
-       {name = "ocaml"; description = "Shill OCaml"; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"};
-       {name = "dab"; description = "Pipe it up"; run = share_audio "BQADAQADcwADi_LrCbRvyK66JIVTAg" "Migos" "Pipe It Up"};
-       {name = "unfree"; description = "Testing voice API"; run = unfree};
-       {name = "q"; description = "Save a quote"; run = quote};
-       {name = "jukebox"; description = "Store and play music"; run = jukebox};
-       {name = "decide"; description = "Help make a decision"; run = decide}]
+      let dab = function
+        | {chat} -> Chain (SendPhoto (chat.id, "data/dab.jpg", Some "Bitch, dab", None, function Success id -> SendMessage (chat.id, "That file's ID is " ^ id)
+                                                                                               | Failure er -> SendMessage (chat.id, "Failed to send photo with: " ^ er)),
+                           ResendAudio (chat.id, "BQADAQADcwADi_LrCbRvyK66JIVTAg", "Migos", "Pipe It Up", None)) in
+      [{name = "hello"; description = "Greet the user"; enabled = true; run = greet};
+       {name = "meow"; description = "Load images from /r/meow_irl"; enabled = true; run = meow};
+       {name = "free"; description = "Free the world from the clutches of proprietary software"; enabled = true; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
+       {name = "ocaml"; description = "Shill OCaml"; enabled = true; run = share_audio "BQADAQADcgADi_LrCdarRiXyyEZbAg" "Nate Foster" "flOCaml"};
+       {name = "dab"; description = "Pipe it up"; enabled = true; run = dab (*share_audio "BQADAQADcwADi_LrCbRvyK66JIVTAg" "Migos" "Pipe It Up"*)};
+       {name = "unfree"; description = "Testing voice API"; enabled = true; run = unfree};
+       {name = "q"; description = "Save a quote"; enabled = true; run = quote};
+       {name = "jukebox"; description = "Store and play music"; enabled = true; run = jukebox};
+       {name = "decide"; description = "Help make a decision"; enabled = true; run = decide}]
 end)
 
 type 'a result = 'a Api.Result.result

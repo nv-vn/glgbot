@@ -1,5 +1,7 @@
 open Yojson.Safe
 
+(** Specifies the API used for creating Telegram bots, defined at https://core.telegram.org/bots/api *)
+
 (** An exception thrown if some rules specified in the API are invalidated by incorrectly formatted data of some type *)
 exception ApiException of string
 
@@ -66,6 +68,24 @@ module PhotoSize : sig
   val create : file_id:string -> width:int -> height:int -> ?file_size:int option -> unit -> photo_size
   (** Read a `photo_size` out of some JSON *)
   val read : json -> photo_size
+
+  (** This module is used to deal with outgoing photo messages *)
+  module Out : sig
+    (** Represents the outgoing photo message. Note that the `photo` field can either be an existing file id or the raw bytes from a file *)
+    type photo_size = {
+      chat_id             : int;
+      photo               : string;
+      caption             : string option;
+      reply_to_message_id : int option;
+      reply_markup        : unit option (* FIXME *)
+    }
+    (** Create a `photo_size` in a concise manner *)
+    val create : chat_id:int -> photo:string -> ?caption:string option -> ?reply_to:int option -> unit -> photo_size
+    (** Prepare a `photo_size` for sending -- used in the case of a file id *)
+    val prepare : photo_size -> string
+    (** Prepare a `photo_size` for sending -- used in the case of the raw bytes *)
+    val prepare_multipart : photo_size -> string -> string Lwt.t
+  end
 end
 
 module Audio : sig
@@ -279,6 +299,8 @@ module Command : sig
     | Nothing
     | GetMe of (User.user Result.result -> action)
     | SendMessage of int * string
+    | SendPhoto of int * string * string option * int option * (string Result.result -> action)
+    | ResendPhoto of int * string * string option * int option
     | SendAudio of int * string * string * string * int option * (string Result.result -> action)
     | ResendAudio of int * string * string * string * int option
     | SendVoice of int * string * int option * (string Result.result -> action)
@@ -290,9 +312,10 @@ module Command : sig
 
   (** This type is used to represent available commands. The `name` field is the command's name (without a slash) and the `description` field is the description to be used in the help message. `run` is the function called when invoking the command. *)
   type command = {
-    name        : string;
-    description : string;
-    run         : Message.message -> action
+    name            : string;
+    description     : string;
+    mutable enabled : bool;
+    run             : Message.message -> action
   }
 
   (** Tests to see whether an update from the update queue invoked a command *)
@@ -331,6 +354,12 @@ module type TELEGRAM_BOT = sig
 
   (** Send a text message to a specified chat *)
   val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
+
+  (** Send a new image file (jpeg/png) to a specified chat. Note that `photo` refers to the file's name to send. *)
+  val send_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> string Result.result Lwt.t
+
+  (** Send an existing image file (jpeg/png) to a specified chat. Note that `photo` refers to the file's id on the Telegram servers. *)
+  val resend_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> unit Result.result Lwt.t
 
   (** Send a new audio file (mp3) to a specified chat. Note that `audio` refers to the file's name to send. *)
   val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> string Result.result Lwt.t

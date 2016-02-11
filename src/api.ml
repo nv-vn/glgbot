@@ -142,6 +142,36 @@ module PhotoSize = struct
     let height = the_int @@ get_field "height" obj in
     let file_size = the_int <$> get_opt_field "file_size" obj in
     create ~file_id ~width ~height ~file_size ()
+
+  module Out = struct
+    type photo_size = {
+      chat_id             : int;
+      photo               : string;
+      caption             : string option;
+      reply_to_message_id : int option;
+      reply_markup        : unit option (* FIXME *)
+    }
+
+    let create ~chat_id ~photo ?(caption = None) ?(reply_to = None) () =
+      {chat_id; photo; caption; reply_to_message_id = reply_to; reply_markup = None}
+
+    let prepare = function
+    | {chat_id; photo; caption; reply_to_message_id; reply_markup} ->
+      let json = `Assoc ([("chat_id", `Int chat_id);
+                          ("photo", `String photo)] +? ("caption", this_string <$> caption)
+                                                    +? ("reply_to_message_id", this_int <$> reply_to_message_id)) in
+      Yojson.Safe.to_string json
+
+    let prepare_multipart = function
+      | {chat_id; photo; caption; reply_to_message_id; reply_markup} ->
+        let fields = ([("chat_id", string_of_int chat_id)] +? ("caption", caption)
+                                                           +? ("reply_to_message_id", string_of_int <$> reply_to_message_id)) in
+        let open Batteries.String in
+        let mime =
+          if ends_with photo ".jpg" || ends_with photo ".jpeg" then "image/jpeg" else
+          if ends_with photo ".png" then "image/png" else "text/plain" in
+        InputFile.multipart_body fields ("photo", photo, mime)
+  end
 end
 
 module Audio = struct
@@ -192,7 +222,6 @@ module Audio = struct
     let prepare_multipart = function
       | {chat_id; audio; duration; performer; title; reply_to_message_id} ->
         let fields = [("chat_id", string_of_int chat_id);
-                      ("audio", audio);
                       ("performer", performer);
                       ("title", title)] +? ("duration", string_of_int <$> duration)
                                         +? ("reply_to_message_id", string_of_int <$> reply_to_message_id) in
@@ -300,15 +329,14 @@ module Voice = struct
     let prepare = function
       | {chat_id; voice; duration; reply_to_message_id} ->
         let json = `Assoc ([("chat_id", `Int chat_id);
-                            ("voice", `String voice)] +? ("duration", this_int <$> duration)
-                                                      +? ("reply_to_message_id", this_int <$> reply_to_message_id)) in
+                            ("voice", `String voice)]  +? ("duration", this_int <$> duration)
+                                                       +? ("reply_to_message_id", this_int <$> reply_to_message_id)) in
         Yojson.Safe.to_string json
 
     let prepare_multipart = function
       | {chat_id; voice; duration; reply_to_message_id} ->
-        let fields = [("chat_id", string_of_int chat_id);
-                      ("voice", voice)] +? ("duration", string_of_int <$> duration)
-                                        +? ("reply_to_message_id", string_of_int <$> reply_to_message_id) in
+        let fields = [("chat_id", string_of_int chat_id)] +? ("duration", string_of_int <$> duration)
+                                                          +? ("reply_to_message_id", string_of_int <$> reply_to_message_id) in
         InputFile.multipart_body fields ("voice", voice, "audio/ogg")
   end
 end
@@ -453,6 +481,8 @@ module Command = struct
     | Nothing
     | GetMe of (User.user Result.result -> action)
     | SendMessage of int * string
+    | SendPhoto of int * string * string option * int option * (string Result.result -> action)
+    | ResendPhoto of int * string * string option * int option
     | SendAudio of int * string * string * string * int option * (string Result.result -> action)
     | ResendAudio of int * string * string * string * int option
     | SendVoice of int * string * int option * (string Result.result -> action)
@@ -463,9 +493,10 @@ module Command = struct
     | Chain of action * action
 
   type command = {
-    name        : string;
-    description : string;
-    run         : message -> action
+    name            : string;
+    description     : string;
+    mutable enabled : bool;
+    run             : message -> action
   }
 
   let is_command = function
@@ -484,7 +515,7 @@ module Command = struct
             end in
         match cmds with
         | [] -> Nothing
-        | cmd::_ when cmp txt ("/" ^ cmd.name) -> cmd.run msg
+        | cmd::_ when cmp txt ("/" ^ cmd.name) && cmd.enabled -> cmd.run msg
         | _::cmds -> read_command msg cmds
       end
     | {text = None} -> Nothing
@@ -514,6 +545,8 @@ module type TELEGRAM_BOT = sig
 
   val get_me : User.user Result.result Lwt.t
   val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
+  val send_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> string Result.result Lwt.t
+  val resend_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> unit Result.result Lwt.t
   val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> string Result.result Lwt.t
   val resend_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
   val send_voice : chat_id:int -> voice:string -> reply_to:int option -> string Result.result Lwt.t
@@ -534,7 +567,7 @@ module Mk (B : BOT) = struct
   let rec commands =
     let open Chat in
     let open Message in
-    {name = "help"; description = "Show this message"; run = function
+    {name = "help"; description = "Show this message"; enabled = true; run = function
          | {chat} -> SendMessage (chat.id, "Commands:" ^ Command.make_help commands)} :: B.commands
 
   let get_me =
@@ -556,6 +589,27 @@ module Mk (B : BOT) = struct
     return @@ match get_field "ok" obj with
     | `Bool true -> Result.Success ()
     | _ -> Result.Failure (the_string @@ get_field "description" obj)
+
+  let send_photo ~chat_id ~photo ?(caption = None) ~reply_to =
+    let boundary = "--1234567890" in
+    PhotoSize.Out.prepare_multipart (PhotoSize.Out.create ~chat_id ~photo ~caption ~reply_to ()) boundary >>= fun body ->
+    let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendPhoto")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ List.hd @@ the_list @@ get_field "photo" @@ get_field "result" obj)
+    | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
+
+  let resend_photo ~chat_id ~photo ?(caption = None) ~reply_to =
+    let body = PhotoSize.Out.prepare @@ PhotoSize.Out.create ~chat_id ~photo ~caption ~reply_to () in
+    let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendPhoto")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success ()
+    | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
   let send_audio ~chat_id ~audio ~performer ~title ~reply_to =
     let boundary = "---1234567890" in
@@ -662,6 +716,8 @@ module Mk (B : BOT) = struct
     | Nothing -> return ()
     | GetMe f -> get_me >>= fun x -> evaluator (f x)
     | SendMessage (chat_id, text) -> send_message ~chat_id ~text >>= fun _ -> return ()
+    | SendPhoto (chat_id, photo, caption, reply_to, f) -> send_photo ~chat_id ~photo ~caption ~reply_to >>= fun x -> evaluator (f x)
+    | ResendPhoto (chat_id, photo, caption, reply_to) -> resend_photo ~chat_id ~photo ~caption ~reply_to >>= fun _ -> return ()
     | SendAudio (chat_id, audio, performer, title, reply_to, f) -> send_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun x -> evaluator (f x)
     | ResendAudio (chat_id, audio, performer, title, reply_to) -> resend_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun _ -> return ()
     | SendVoice (chat_id, voice, reply_to, f) -> send_voice ~chat_id ~voice ~reply_to >>= fun x -> evaluator (f x)
