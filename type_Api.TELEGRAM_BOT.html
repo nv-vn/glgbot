@@ -16,6 +16,16 @@
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;get_me&nbsp;:&nbsp;<span class="constructor">Api</span>.<span class="constructor">User</span>.user&nbsp;<span class="constructor">Api</span>.<span class="constructor">Result</span>.result&nbsp;<span class="constructor">Lwt</span>.t<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;send_message&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;chat_id:int&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;text:string&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit&nbsp;<span class="constructor">Api</span>.<span class="constructor">Result</span>.result&nbsp;<span class="constructor">Lwt</span>.t<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;send_photo&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;chat_id:int&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;photo:string&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;?caption:string&nbsp;option&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;reply_to:int&nbsp;option&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;string&nbsp;<span class="constructor">Api</span>.<span class="constructor">Result</span>.result&nbsp;<span class="constructor">Lwt</span>.t<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;resend_photo&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;chat_id:int&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;photo:string&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;?caption:string&nbsp;option&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;reply_to:int&nbsp;option&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit&nbsp;<span class="constructor">Api</span>.<span class="constructor">Result</span>.result&nbsp;<span class="constructor">Lwt</span>.t<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;send_audio&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;chat_id:int&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;audio:string&nbsp;<span class="keywordsign">-&gt;</span><br>

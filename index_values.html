@@ -92,6 +92,11 @@ Prepare an `audio` for sending -- used in the case of a file id
 Read an `audio` out of some JSON
 </div>
 </td></tr>
+<tr><td><a href="Api.PhotoSize.Out.html#VALcreate">create</a> [<a href="Api.PhotoSize.Out.html">Api.PhotoSize.Out</a>]</td>
+<td><div class="info">
+Prepare a `photo_size` for sending -- used in the case of a file id
+</div>
+</td></tr>
 <tr><td><a href="Api.PhotoSize.html#VALcreate">create</a> [<a href="Api.PhotoSize.html">Api.PhotoSize</a>]</td>
 <td><div class="info">
 Read a `photo_size` out of some JSON
@@ -172,9 +177,16 @@ Prepare a `voice` for sending -- used in the case of the raw bytes
 Prepare an `audio` for sending -- used in the case of the raw bytes
 </div>
 </td></tr>
+<tr><td><a href="Api.PhotoSize.Out.html#VALprepare">prepare</a> [<a href="Api.PhotoSize.Out.html">Api.PhotoSize.Out</a>]</td>
+<td><div class="info">
+Prepare a `photo_size` for sending -- used in the case of the raw bytes
+</div>
+</td></tr>
 <tr><td><a href="Api.Voice.Out.html#VALprepare_multipart">prepare_multipart</a> [<a href="Api.Voice.Out.html">Api.Voice.Out</a>]</td>
 <td></td></tr>
 <tr><td><a href="Api.Audio.Out.html#VALprepare_multipart">prepare_multipart</a> [<a href="Api.Audio.Out.html">Api.Audio.Out</a>]</td>
+<td></td></tr>
+<tr><td><a href="Api.PhotoSize.Out.html#VALprepare_multipart">prepare_multipart</a> [<a href="Api.PhotoSize.Out.html">Api.PhotoSize.Out</a>]</td>
 <td></td></tr>
 <tr><td align="left"><br>R</td></tr>
 <tr><td><a href="Api.Update.html#VALread">read</a> [<a href="Api.Update.html">Api.Update</a>]</td>
@@ -218,6 +230,11 @@ Reads a single update and, given a list of commands, matches it to a correct com
 Send an existing audio file (mp3) to a specified chat.
 </div>
 </td></tr>
+<tr><td><a href="Api.TELEGRAM_BOT.html#VALresend_photo">resend_photo</a> [<a href="Api.TELEGRAM_BOT.html">Api.TELEGRAM_BOT</a>]</td>
+<td><div class="info">
+Send an existing image file (jpeg/png) to a specified chat.
+</div>
+</td></tr>
 <tr><td><a href="Api.TELEGRAM_BOT.html#VALresend_voice">resend_voice</a> [<a href="Api.TELEGRAM_BOT.html">Api.TELEGRAM_BOT</a>]</td>
 <td><div class="info">
 Send an existing voice message (ogg) to a specified chat.
@@ -237,6 +254,11 @@ Send a new audio file (mp3) to a specified chat.
 <tr><td><a href="Api.TELEGRAM_BOT.html#VALsend_message">send_message</a> [<a href="Api.TELEGRAM_BOT.html">Api.TELEGRAM_BOT</a>]</td>
 <td><div class="info">
 Send a text message to a specified chat
+</div>
+</td></tr>
+<tr><td><a href="Api.TELEGRAM_BOT.html#VALsend_photo">send_photo</a> [<a href="Api.TELEGRAM_BOT.html">Api.TELEGRAM_BOT</a>]</td>
+<td><div class="info">
+Send a new image file (jpeg/png) to a specified chat.
 </div>
 </td></tr>
 <tr><td><a href="Api.TELEGRAM_BOT.html#VALsend_voice">send_voice</a> [<a href="Api.TELEGRAM_BOT.html">Api.TELEGRAM_BOT</a>]</td>

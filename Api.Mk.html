@@ -54,6 +54,14 @@ Get the user information for the bot; use to test connection to the Telegram ser
 Send a text message to a specified chat<br>
 </div>
 
+<pre><span id="VALsend_photo"><span class="keyword">val</span> send_photo</span> : <code class="type">chat_id:int -><br>       photo:string -><br>       ?caption:string option -><br>       reply_to:int option -> string <a href="Api.Result.html#TYPEresult">Api.Result.result</a> Lwt.t</code></pre><div class="info ">
+Send a new image file (jpeg/png) to a specified chat. Note that `photo` refers to the file's name to send.<br>
+</div>
+
+<pre><span id="VALresend_photo"><span class="keyword">val</span> resend_photo</span> : <code class="type">chat_id:int -><br>       photo:string -><br>       ?caption:string option -> reply_to:int option -> unit <a href="Api.Result.html#TYPEresult">Api.Result.result</a> Lwt.t</code></pre><div class="info ">
+Send an existing image file (jpeg/png) to a specified chat. Note that `photo` refers to the file's id on the Telegram servers.<br>
+</div>
+
 <pre><span id="VALsend_audio"><span class="keyword">val</span> send_audio</span> : <code class="type">chat_id:int -><br>       audio:string -><br>       performer:string -><br>       title:string -> reply_to:int option -> string <a href="Api.Result.html#TYPEresult">Api.Result.result</a> Lwt.t</code></pre><div class="info ">
 Send a new audio file (mp3) to a specified chat. Note that `audio` refers to the file's name to send.<br>
 </div>

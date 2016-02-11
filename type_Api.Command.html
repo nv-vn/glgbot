@@ -15,6 +15,9 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Nothing</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">GetMe</span>&nbsp;<span class="keyword">of</span>&nbsp;(<span class="constructor">Api</span>.<span class="constructor">User</span>.user&nbsp;<span class="constructor">Api</span>.<span class="constructor">Result</span>.result&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Api</span>.<span class="constructor">Command</span>.action)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">SendMessage</span>&nbsp;<span class="keyword">of</span>&nbsp;int&nbsp;*&nbsp;string<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">SendPhoto</span>&nbsp;<span class="keyword">of</span>&nbsp;int&nbsp;*&nbsp;string&nbsp;*&nbsp;string&nbsp;option&nbsp;*&nbsp;int&nbsp;option&nbsp;*<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(string&nbsp;<span class="constructor">Api</span>.<span class="constructor">Result</span>.result&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Api</span>.<span class="constructor">Command</span>.action)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">ResendPhoto</span>&nbsp;<span class="keyword">of</span>&nbsp;int&nbsp;*&nbsp;string&nbsp;*&nbsp;string&nbsp;option&nbsp;*&nbsp;int&nbsp;option<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">SendAudio</span>&nbsp;<span class="keyword">of</span>&nbsp;int&nbsp;*&nbsp;string&nbsp;*&nbsp;string&nbsp;*&nbsp;string&nbsp;*&nbsp;int&nbsp;option&nbsp;*<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(string&nbsp;<span class="constructor">Api</span>.<span class="constructor">Result</span>.result&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Api</span>.<span class="constructor">Command</span>.action)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">ResendAudio</span>&nbsp;<span class="keyword">of</span>&nbsp;int&nbsp;*&nbsp;string&nbsp;*&nbsp;string&nbsp;*&nbsp;string&nbsp;*&nbsp;int&nbsp;option<br>
@@ -31,6 +34,7 @@
 &nbsp;&nbsp;<span class="keyword">type</span>&nbsp;command&nbsp;=&nbsp;{<br>
 &nbsp;&nbsp;&nbsp;&nbsp;name&nbsp;:&nbsp;string;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;description&nbsp;:&nbsp;string;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">mutable</span>&nbsp;enabled&nbsp;:&nbsp;bool;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;run&nbsp;:&nbsp;<span class="constructor">Api</span>.<span class="constructor">Message</span>.message&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Api</span>.<span class="constructor">Command</span>.action;<br>
 &nbsp;&nbsp;}<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;is_command&nbsp;:&nbsp;<span class="constructor">Api</span>.<span class="constructor">Update</span>.update&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
