@@ -169,7 +169,8 @@ module PhotoSize = struct
         let open Batteries.String in
         let mime =
           if ends_with photo ".jpg" || ends_with photo ".jpeg" then "image/jpeg" else
-          if ends_with photo ".png" then "image/png" else "text/plain" in
+          if ends_with photo ".png" then "image/png" else
+          if ends_with photo ".gif" then "image/gif" else "text/plain" in
         InputFile.multipart_body fields ("photo", photo, mime)
   end
 end
@@ -248,6 +249,29 @@ module Document = struct
     let mime_type = the_string <$> get_opt_field "mime_type" obj in
     let file_size = the_int <$> get_opt_field "file_size" obj in
     create ~file_id ~thumb ~file_name ~mime_type ~file_size ()
+
+  module Out = struct
+    type audio = {
+      chat_id             : int;
+      document            : string;
+      reply_to_message_id : int option;
+      reply_markup        : unit option (* FIXME *)
+    }
+
+    let create ~chat_id ~document ?(reply_to = None) () =
+      {chat_id; document; reply_to_message_id = reply_to; reply_markup = None}
+
+    let prepare = function
+    | {chat_id; document; reply_to_message_id; reply_markup} ->
+      let json = `Assoc ([("chat_id", `Int chat_id);
+                          ("document", `String document)] +? ("reply_to_message_id", this_int <$> reply_to_message_id)) in
+      Yojson.Safe.to_string json
+
+    let prepare_multipart = function
+      | {chat_id; document; reply_to_message_id} ->
+        let fields = [("chat_id", string_of_int chat_id)] +? ("reply_to_message_id", string_of_int <$> reply_to_message_id) in
+        InputFile.multipart_body fields ("document", document, "text/plain") (* FIXME? *)
+  end
 end
 
 module Sticker = struct
@@ -485,6 +509,8 @@ module Command = struct
     | ResendPhoto of int * string * string option * int option
     | SendAudio of int * string * string * string * int option * (string Result.result -> action)
     | ResendAudio of int * string * string * string * int option
+    | SendDocument of int * string * int option * (string Result.result -> action)
+    | ResendDocument of int * string * int option
     | SendVoice of int * string * int option * (string Result.result -> action)
     | ResendVoice of int * string * int option
     | GetUpdates of (Update.update list Result.result -> action)
@@ -549,6 +575,8 @@ module type TELEGRAM_BOT = sig
   val resend_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> unit Result.result Lwt.t
   val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> string Result.result Lwt.t
   val resend_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_document : chat_id:int -> document:string -> reply_to:int option -> string Result.result Lwt.t
+  val resend_document : chat_id:int -> document:string -> reply_to:int option -> unit Result.result Lwt.t
   val send_voice : chat_id:int -> voice:string -> reply_to:int option -> string Result.result Lwt.t
   val resend_voice : chat_id:int -> voice:string -> reply_to:int option -> unit Result.result Lwt.t
   val get_updates : Update.update list Result.result Lwt.t
@@ -626,6 +654,27 @@ module Mk (B : BOT) = struct
     let body = Audio.Out.prepare @@ Audio.Out.create ~chat_id ~audio ~performer ~title ~reply_to () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendAudio")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success ()
+    | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
+
+  let send_document ~chat_id ~document ~reply_to =
+    let boundary = "--1234567890" in
+    Document.Out.prepare_multipart (Document.Out.create ~chat_id ~document ~reply_to ()) boundary >>= fun body ->
+    let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendDocument")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "document" @@ get_field "result" obj)
+    | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
+
+  let resend_document ~chat_id ~document ~reply_to =
+    let body = Document.Out.prepare @@ Document.Out.create ~chat_id ~document ~reply_to () in
+    let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendDocument")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
     let obj = Yojson.Safe.from_string json in
     return @@ match get_field "ok" obj with
@@ -720,6 +769,8 @@ module Mk (B : BOT) = struct
     | ResendPhoto (chat_id, photo, caption, reply_to) -> resend_photo ~chat_id ~photo ~caption ~reply_to >>= fun _ -> return ()
     | SendAudio (chat_id, audio, performer, title, reply_to, f) -> send_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun x -> evaluator (f x)
     | ResendAudio (chat_id, audio, performer, title, reply_to) -> resend_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun _ -> return ()
+    | SendDocument (chat_id, document, reply_to, f) -> send_document ~chat_id ~document ~reply_to >>= fun x -> evaluator (f x)
+    | ResendDocument (chat_id, document, reply_to) -> resend_document ~chat_id ~document ~reply_to >>= fun _ -> return ()
     | SendVoice (chat_id, voice, reply_to, f) -> send_voice ~chat_id ~voice ~reply_to >>= fun x -> evaluator (f x)
     | ResendVoice (chat_id, voice, reply_to) -> resend_voice ~chat_id ~voice ~reply_to >>= fun _ -> return ()
     | GetUpdates f -> get_updates >>= fun x -> evaluator (f x)

@@ -303,6 +303,8 @@ module Command : sig
     | ResendPhoto of int * string * string option * int option
     | SendAudio of int * string * string * string * int option * (string Result.result -> action)
     | ResendAudio of int * string * string * string * int option
+    | SendDocument of int * string * int option * (string Result.result -> action)
+    | ResendDocument of int * string * int option
     | SendVoice of int * string * int option * (string Result.result -> action)
     | ResendVoice of int * string * int option
     | GetUpdates of (Update.update list Result.result -> action)
@@ -366,6 +368,12 @@ module type TELEGRAM_BOT = sig
 
   (** Send an existing audio file (mp3) to a specified chat. Note that `audio` refers to the file's id on the Telegram servers. *)
   val resend_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
+
+  (** Send a new document file to a specified chat. Note that `document` refers to the file's name to send. *)
+  val send_document : chat_id:int -> document:string -> reply_to:int option -> string Result.result Lwt.t
+
+  (** Send an existing document file to a specified chat. Note that `document` refers to the file's id on the Telegram servers. *)
+  val resend_document : chat_id:int -> document:string -> reply_to:int option -> unit Result.result Lwt.t
 
   (** Send a new voice message (ogg) to a specified chat. Note that `voice` refers to the file's name to send. *)
   val send_voice : chat_id:int -> voice:string -> reply_to:int option -> string Result.result Lwt.t
