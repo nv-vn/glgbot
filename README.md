@@ -1,5 +1,7 @@
 # glgbot
 
+![BITCH, DAB](https://u.teknik.io/uxnuI.png "BITCH, DAB")
+
 ## How to use:
 ```
 $ echo -n "$TELEGRAM_API_TOKEN" > bot.token
