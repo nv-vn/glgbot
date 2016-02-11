@@ -395,10 +395,20 @@ module Message = struct
     let location = Location.read <$> get_opt_field "location" obj in
     create ~message_id ~from ~date ~chat ~forward_from ~forward_date ~reply_to ~text ~audio ~document ~photo ~sticker ~video ~voice ~caption ~contact ~location ()
 
-  let get_sender = function
+  let get_sender_first_name = function
     | {from = Some user} -> user.first_name
     | {chat = {first_name = Some first_name}} -> first_name
     | _ -> "unknown sender"
+
+  let get_sender_username = function
+    | {from = Some {username = Some username}} -> username
+    | {chat = {username = Some username}} -> username
+    | _ -> ""
+
+  let get_sender msg =
+    match get_sender_username msg with
+    | "" -> get_sender_first_name msg
+    | un -> get_sender_first_name msg ^ " (" ^ un ^ ")"
 end
 
 module Update = struct

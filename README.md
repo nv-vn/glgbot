@@ -3,6 +3,8 @@
 ## How to use:
 ```
 $ echo -n "$TELEGRAM_API_TOKEN" > bot.token
+$ git clone https://github.com/j0sh/ocaml-gensqlite   # The OPAM package is broken...
+$ cd ocaml-gensqlite && make && make install && cd .. # Just compile from source yourself, for now
 $ oasis setup -setup-update dynamic
 $ make
 $ ./bot.native
