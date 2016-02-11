@@ -17,3 +17,4 @@ of two of these types of commands, see src/bot.ml.
 
 ## Documentation:
 Some (poorly generated) documentation for the Telegram API implementation is provided at [the Github project site](https://nv-vn.github.io/glgbot/).
+Alternatively, you can just browse through `src/api.mli` to view this same information as part of the module signature.
