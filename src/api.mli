@@ -45,7 +45,9 @@ module InputFile : sig
   val load : string -> string Lwt.t
 (** Used to format data as HTTP `multipart/form-data`
     @param fields A list of fields to be included in the form data as a pair of strings (name, value)
-    @param (name, file, mime) The name of the data field, the path to the file/the file's name, and the mime type of the file
+    @param name file mime The name of the data field
+    @param file The path to the file/the file's name
+    @param mime The mime type of the file
     @param boundary' A string to be used as a boundary to split different parts of the data; ideally, this text should not be present in the raw data of the file being sent
     @return The formatted string to use as the HTTP body (make sure to correctly format the headers for multipart/form-data) *)
   val multipart_body : (string * string) list -> string * string * string -> string -> string Lwt.t
