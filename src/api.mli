@@ -58,6 +58,53 @@ not be present in the raw data of the file being sent
   val multipart_body : (string * string) list -> string * string * string -> string -> string Lwt.t
 end
 
+(** Markup options for users to reply to sent messages *)
+module ReplyMarkup : sig
+  (** Represents the custom keyboard type *)
+  type reply_keyboard_markup = {
+    keyboard          : string list list;
+    resize_keyboard   : bool option;
+    one_time_keyboard : bool option;
+    selective         : bool option
+  }
+
+  (** Represents the request to hide a keyboard *)
+  type reply_keyboard_hide = {
+    selective : bool option
+  }
+
+  (** Represents the request to force a reply *)
+  type force_reply = {
+    selective : bool option
+  }
+
+  (** Represents all possible reply markup options *)
+  type reply_markup =
+    | ReplyKeyboardMarkup of reply_keyboard_markup
+    | ReplyKeyboardHide of reply_keyboard_hide
+    | ForceReply of force_reply
+
+  val prepare : reply_markup -> json
+
+  (** Convenience functions for reply_keyboard_markup *)
+  module ReplyKeyboardMarkup : sig
+    (** Create a `ReplyKeyboardMarkup : reply_markup` in a concise way *)
+    val create : keyboard:string list list -> ?resize_keyboard:bool option -> ?one_time_keyboard:bool option -> ?selective:bool option -> unit -> reply_markup
+  end
+
+  (** Convenience functions for reply_keyboard_hide *)
+  module ReplyKeyboardHide : sig
+    (** Create a `ReplyKeyboardHide : reply_markup` in a concise way *)
+    val create : ?selective:bool option -> unit -> reply_markup
+  end
+
+  (** Convenience functions for force_reply *)
+  module ForceReply : sig
+    (** Create a `ForceReply : reply_markup` in a concise way *)
+    val create : ?selective:bool option -> unit -> reply_markup
+  end
+end
+
 (** This module is used for all images sent in chats *)
 module PhotoSize : sig
   (** Represents any kind of image sent in a message or used as a thumbnail, profile picture, etc. *)
@@ -80,10 +127,10 @@ module PhotoSize : sig
       photo               : string;
       caption             : string option;
       reply_to_message_id : int option;
-      reply_markup        : unit option (* FIXME *)
+      reply_markup        : ReplyMarkup.reply_markup option
     }
     (** Create a `photo_size` in a concise manner *)
-    val create : chat_id:int -> photo:string -> ?caption:string option -> ?reply_to:int option -> unit -> photo_size
+    val create : chat_id:int -> photo:string -> ?caption:string option -> ?reply_to:int option -> ?reply_markup:ReplyMarkup.reply_markup option -> unit -> photo_size
     (** Prepare a `photo_size` for sending -- used in the case of a file id *)
     val prepare : photo_size -> string
     (** Prepare a `photo_size` for sending -- used in the case of the raw bytes *)
@@ -116,10 +163,10 @@ module Audio : sig
       performer           : string;
       title               : string;
       reply_to_message_id : int option;
-      reply_markup        : unit option (* FIXME *)
+      reply_markup        : ReplyMarkup.reply_markup option
     }
     (** Create an `audio` in a concise manner *)
-    val create : chat_id:int -> audio:string -> ?duration:int option -> performer:string -> title:string -> ?reply_to:int option -> unit -> audio
+    val create : chat_id:int -> audio:string -> ?duration:int option -> performer:string -> title:string -> ?reply_to:int option -> ?reply_markup:ReplyMarkup.reply_markup option -> unit -> audio
     (** Prepare an `audio` for sending -- used in the case of a file id *)
     val prepare : audio -> string
     (** Prepare an `audio` for sending -- used in the case of the raw bytes *)
@@ -195,10 +242,10 @@ module Voice : sig
       voice               : string;
       duration            : int option;
       reply_to_message_id : int option;
-      reply_markup        : unit option (* FIXME *)
+      reply_markup        : ReplyMarkup.reply_markup option
     }
     (** Create a `voice` in a concise manner *)
-    val create : chat_id:int -> voice:string -> ?duration:int option -> ?reply_to:int option -> unit -> voice
+    val create : chat_id:int -> voice:string -> ?duration:int option -> ?reply_to:int option -> ?reply_markup:ReplyMarkup.reply_markup option -> unit -> voice
     (** Prepare a `voice` for sending -- used in the case of a file id *)
     val prepare : voice -> string
     (** Prepare a `voice` for sending -- used in the case of the raw bytes *)

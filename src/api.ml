@@ -14,6 +14,7 @@ let rec get_opt_field target = function
   | `Assoc (x::xs) -> get_opt_field target (`Assoc xs)
   | _ -> raise (ApiException "Invalid field access!")
 
+(** TODO: Move all these small functions somewhere better *)
 let (>>=) x f = match x with
   | Some x -> f x
   | None -> None
@@ -34,6 +35,12 @@ let the_int = function
 
 let this_int x = `Int x
 
+let the_bool = function
+  | `Bool bool -> bool
+  | _ -> raise (ApiException "Type assertion failed!")
+
+let this_bool x = `Bool x
+
 let the_float = function
   | `Float float -> float
   | _ -> raise (ApiException "Type assertion failed!")
@@ -45,6 +52,12 @@ let the_list = function
   | _ -> raise (ApiException "Type assertion failed!")
 
 let this_list xs = `List xs
+
+let the_assoc = function
+  | `Assoc assoc -> assoc
+  | _ -> raise (ApiException "Type assertion failed!")
+
+let this_assoc x = `Assoc x
 
 let (+?) xs = function
   | (_, None) -> xs
@@ -125,6 +138,54 @@ module InputFile = struct
     return @@ field_bodies ^ file_body ^ ending
 end
 
+module ReplyMarkup = struct
+  type reply_keyboard_markup = {
+    keyboard          : string list list;
+    resize_keyboard   : bool option;
+    one_time_keyboard : bool option;
+    selective         : bool option
+  }
+
+  type reply_keyboard_hide = {
+    selective : bool option
+  }
+
+  type force_reply = {
+    selective : bool option
+  }
+
+  type reply_markup =
+    | ReplyKeyboardMarkup of reply_keyboard_markup
+    | ReplyKeyboardHide of reply_keyboard_hide
+    | ForceReply of force_reply
+
+  let prepare = function
+    | ReplyKeyboardMarkup {keyboard; resize_keyboard; one_time_keyboard; selective} ->
+      let keyboard = List.map (fun row -> `List (List.map (fun key -> `String key) row)) keyboard in
+      `Assoc ([("keyboard", `List keyboard)] +? ("resize_keyboard", this_bool <$> resize_keyboard)
+                                             +? ("one_time_keyboard", this_bool <$> one_time_keyboard)
+                                             +? ("selective", this_bool <$> selective))
+    | ReplyKeyboardHide {selective} ->
+      `Assoc ([("hide", `Bool true)] +? ("selective", this_bool <$> selective))
+    | ForceReply {selective} ->
+      `Assoc ([("force_reply", `Bool true)] +? ("selective", this_bool <$> selective))
+
+  module ReplyKeyboardMarkup = struct
+    let create ~keyboard ?(resize_keyboard = None) ?(one_time_keyboard = None) ?(selective = None) () =
+      ReplyKeyboardMarkup {keyboard; resize_keyboard; one_time_keyboard; selective}
+  end
+
+  module ReplyKeyboardHide = struct
+    let create ?(selective = None) () =
+      ReplyKeyboardHide {selective}
+  end
+
+  module ForceReply = struct
+    let create ?(selective = None) () =
+      ForceReply {selective}
+  end
+end
+
 module PhotoSize = struct
   type photo_size = {
     file_id   : string;
@@ -149,23 +210,25 @@ module PhotoSize = struct
       photo               : string;
       caption             : string option;
       reply_to_message_id : int option;
-      reply_markup        : unit option (* FIXME *)
+      reply_markup        : ReplyMarkup.reply_markup option
     }
 
-    let create ~chat_id ~photo ?(caption = None) ?(reply_to = None) () =
-      {chat_id; photo; caption; reply_to_message_id = reply_to; reply_markup = None}
+    let create ~chat_id ~photo ?(caption = None) ?(reply_to = None) ?(reply_markup = None) () =
+      {chat_id; photo; caption; reply_to_message_id = reply_to; reply_markup}
 
     let prepare = function
     | {chat_id; photo; caption; reply_to_message_id; reply_markup} ->
       let json = `Assoc ([("chat_id", `Int chat_id);
                           ("photo", `String photo)] +? ("caption", this_string <$> caption)
-                                                    +? ("reply_to_message_id", this_int <$> reply_to_message_id)) in
+                                                    +? ("reply_to_message_id", this_int <$> reply_to_message_id)
+                                                    +? ("reply_markup", ReplyMarkup.prepare <$> reply_markup))in
       Yojson.Safe.to_string json
 
     let prepare_multipart = function
       | {chat_id; photo; caption; reply_to_message_id; reply_markup} ->
         let fields = ([("chat_id", string_of_int chat_id)] +? ("caption", caption)
-                                                           +? ("reply_to_message_id", string_of_int <$> reply_to_message_id)) in
+                                                           +? ("reply_to_message_id", string_of_int <$> reply_to_message_id)
+                                                           +? ("reply_markup", Yojson.Safe.to_string <$> (ReplyMarkup.prepare <$> reply_markup))) in
         let open Batteries.String in
         let mime =
           if ends_with photo ".jpg" || ends_with photo ".jpeg" then "image/jpeg" else
@@ -205,11 +268,11 @@ module Audio = struct
       performer           : string;
       title               : string;
       reply_to_message_id : int option;
-      reply_markup        : unit option (* FIXME *)
+      reply_markup        : ReplyMarkup.reply_markup option
     }
 
-    let create ~chat_id ~audio ?(duration = None) ~performer ~title ?(reply_to = None) () =
-      {chat_id; audio; duration; performer; title; reply_to_message_id = reply_to; reply_markup = None}
+    let create ~chat_id ~audio ?(duration = None) ~performer ~title ?(reply_to = None) ?(reply_markup = None) () =
+      {chat_id; audio; duration; performer; title; reply_to_message_id = reply_to; reply_markup}
 
     let prepare = function
     | {chat_id; audio; duration; performer; title; reply_to_message_id; reply_markup} ->
@@ -255,7 +318,7 @@ module Document = struct
       chat_id             : int;
       document            : string;
       reply_to_message_id : int option;
-      reply_markup        : unit option (* FIXME *)
+      reply_markup        : ReplyMarkup.reply_markup option
     }
 
     let create ~chat_id ~document ?(reply_to = None) () =
@@ -264,12 +327,14 @@ module Document = struct
     let prepare = function
     | {chat_id; document; reply_to_message_id; reply_markup} ->
       let json = `Assoc ([("chat_id", `Int chat_id);
-                          ("document", `String document)] +? ("reply_to_message_id", this_int <$> reply_to_message_id)) in
+                          ("document", `String document)] +? ("reply_to_message_id", this_int <$> reply_to_message_id)
+                                                          +? ("reply_markup", ReplyMarkup.prepare <$> reply_markup)) in
       Yojson.Safe.to_string json
 
     let prepare_multipart = function
-      | {chat_id; document; reply_to_message_id} ->
-        let fields = [("chat_id", string_of_int chat_id)] +? ("reply_to_message_id", string_of_int <$> reply_to_message_id) in
+      | {chat_id; document; reply_to_message_id; reply_markup} ->
+        let fields = [("chat_id", string_of_int chat_id)] +? ("reply_to_message_id", string_of_int <$> reply_to_message_id)
+                                                          +? ("reply_markup", Yojson.Safe.to_string <$> (ReplyMarkup.prepare <$> reply_markup)) in
         InputFile.multipart_body fields ("document", document, "text/plain") (* FIXME? *)
   end
 end
@@ -344,23 +409,25 @@ module Voice = struct
       voice               : string;
       duration            : int option;
       reply_to_message_id : int option;
-      reply_markup        : unit option (* FIXME *)
+      reply_markup        : ReplyMarkup.reply_markup option
     }
 
-    let create ~chat_id ~voice ?(duration = None) ?(reply_to = None) () =
-      {chat_id; voice; duration; reply_to_message_id = reply_to; reply_markup = None}
+    let create ~chat_id ~voice ?(duration = None) ?(reply_to = None) ?(reply_markup = None) () =
+      {chat_id; voice; duration; reply_to_message_id = reply_to; reply_markup}
 
     let prepare = function
-      | {chat_id; voice; duration; reply_to_message_id} ->
+      | {chat_id; voice; duration; reply_to_message_id; reply_markup} ->
         let json = `Assoc ([("chat_id", `Int chat_id);
-                            ("voice", `String voice)]  +? ("duration", this_int <$> duration)
-                                                       +? ("reply_to_message_id", this_int <$> reply_to_message_id)) in
+                            ("voice", `String voice)] +? ("duration", this_int <$> duration)
+                                                      +? ("reply_to_message_id", this_int <$> reply_to_message_id)
+                                                      +? ("reply_markup", ReplyMarkup.prepare <$> reply_markup)) in
         Yojson.Safe.to_string json
 
     let prepare_multipart = function
-      | {chat_id; voice; duration; reply_to_message_id} ->
+      | {chat_id; voice; duration; reply_to_message_id; reply_markup} ->
         let fields = [("chat_id", string_of_int chat_id)] +? ("duration", string_of_int <$> duration)
-                                                          +? ("reply_to_message_id", string_of_int <$> reply_to_message_id) in
+                                                          +? ("reply_to_message_id", string_of_int <$> reply_to_message_id)
+                                                          +? ("reply_markup", Yojson.Safe.to_string <$> (ReplyMarkup.prepare <$> reply_markup)) in
         InputFile.multipart_body fields ("voice", voice, "audio/ogg")
   end
 end
