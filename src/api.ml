@@ -463,6 +463,28 @@ module Message = struct
     | un -> get_sender_first_name msg ^ " (" ^ un ^ ")"
 end
 
+module ChatAction = struct
+  type action =
+    | Typing
+    | UploadPhoto
+    | RecordVideo
+    | UploadVideo
+    | RecordAudio
+    | UploadAudio
+    | UploadDocument
+    | FindLocation
+
+  let to_string = function
+    | Typing -> "typing"
+    | UploadPhoto -> "upload_photo"
+    | RecordVideo -> "record_video"
+    | UploadVideo -> "upload_video"
+    | RecordAudio -> "record_audio"
+    | UploadAudio -> "upload_audio"
+    | UploadDocument -> "upload_document"
+    | FindLocation -> "find_location"
+end
+
 module Update = struct
   type update = {
     update_id : int;
@@ -505,6 +527,8 @@ module Command = struct
     | Nothing
     | GetMe of (User.user Result.result -> action)
     | SendMessage of int * string
+    | ForwardMessage of int * int * int
+    | SendChatAction of int * ChatAction.action
     | SendPhoto of int * string * string option * int option * (string Result.result -> action)
     | ResendPhoto of int * string * string option * int option
     | SendAudio of int * string * string * string * int option * (string Result.result -> action)
@@ -571,6 +595,8 @@ module type TELEGRAM_BOT = sig
 
   val get_me : User.user Result.result Lwt.t
   val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
+  val forward_message : chat_id:int -> from_chat_id:int -> message_id:int -> unit Result.result Lwt.t
+  val send_chat_action : chat_id:int -> action:ChatAction.action -> unit Result.result Lwt.t
   val send_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> string Result.result Lwt.t
   val resend_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> unit Result.result Lwt.t
   val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> string Result.result Lwt.t
@@ -612,6 +638,31 @@ module Mk (B : BOT) = struct
     let body = Yojson.Safe.to_string json in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendMessage")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success ()
+    | _ -> Result.Failure (the_string @@ get_field "description" obj)
+
+  let forward_message ~chat_id ~from_chat_id ~message_id =
+    let json = `Assoc [("chat_id", `Int chat_id);
+                       ("from_chat_id", `Int from_chat_id);
+                       ("message_id", `Int message_id)] in
+    let body = Yojson.Safe.to_string json in
+    let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "forwardMessage")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success ()
+    | _ -> Result.Failure (the_string @@ get_field "description" obj)
+
+  let send_chat_action ~chat_id ~action =
+    let json = `Assoc [("chat_id", `Int chat_id);
+                       ("action", `String (ChatAction.to_string action))] in
+    let body = Yojson.Safe.to_string json in
+    let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendChatAction")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
     let obj = Yojson.Safe.from_string json in
     return @@ match get_field "ok" obj with
@@ -765,6 +816,8 @@ module Mk (B : BOT) = struct
     | Nothing -> return ()
     | GetMe f -> get_me >>= fun x -> evaluator (f x)
     | SendMessage (chat_id, text) -> send_message ~chat_id ~text >>= fun _ -> return ()
+    | ForwardMessage (chat_id, from_chat_id, message_id) -> forward_message ~chat_id ~from_chat_id ~message_id >>= fun _ -> return ()
+    | SendChatAction (chat_id, action) -> send_chat_action ~chat_id ~action >>= fun _ -> return ()
     | SendPhoto (chat_id, photo, caption, reply_to, f) -> send_photo ~chat_id ~photo ~caption ~reply_to >>= fun x -> evaluator (f x)
     | ResendPhoto (chat_id, photo, caption, reply_to) -> resend_photo ~chat_id ~photo ~caption ~reply_to >>= fun _ -> return ()
     | SendAudio (chat_id, audio, performer, title, reply_to, f) -> send_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun x -> evaluator (f x)

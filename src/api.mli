@@ -46,11 +46,14 @@ module InputFile : sig
   (** Loads a file (by filename) and returns the raw bytes inside of it *)
   val load : string -> string Lwt.t
 (** Used to format data as HTTP `multipart/form-data`
-    @param fields A list of fields to be included in the form data as a pair of strings (name, value)
-    @param name file mime The name of the data field
-    @param file The path to the file/the file's name
-    @param mime The mime type of the file
-    @param boundary' A string to be used as a boundary to split different parts of the data; ideally, this text should not be present in the raw data of the file being sent
+    Takes:
+    - A list of fields to be included in the form data as a pair of strings (name, value)
+    - A tuple of: {ul
+      {li The name of the data field}
+      {li The path to the file/the file's name}
+      {li The mime type of the file}}
+    - A string to be used as a boundary to split different parts of the data; ideally, this text should 
+not be present in the raw data of the file being sent
     @return The formatted string to use as the HTTP body (make sure to correctly format the headers for multipart/form-data) *)
   val multipart_body : (string * string) list -> string * string * string -> string -> string Lwt.t
 end
@@ -263,6 +266,23 @@ module Message : sig
   val get_sender : message -> string
 end
 
+(** Actions that can be sent as user statuses *)
+module ChatAction : sig
+  (** Represents all recognized chat actions *)
+  type action =
+    | Typing
+    | UploadPhoto
+    | RecordVideo
+    | UploadVideo
+    | RecordAudio
+    | UploadAudio
+    | UploadDocument
+    | FindLocation
+
+  (** Gets the string representation of the action, for use in JSON *)
+  val to_string : action -> string
+end
+
 module Update : sig
   (** Stores the info for updates to a chat/group *)
   type update = {
@@ -299,6 +319,8 @@ module Command : sig
     | Nothing
     | GetMe of (User.user Result.result -> action)
     | SendMessage of int * string
+    | ForwardMessage of int * int * int
+    | SendChatAction of int * ChatAction.action
     | SendPhoto of int * string * string option * int option * (string Result.result -> action)
     | ResendPhoto of int * string * string option * int option
     | SendAudio of int * string * string * string * int option * (string Result.result -> action)
@@ -356,6 +378,12 @@ module type TELEGRAM_BOT = sig
 
   (** Send a text message to a specified chat *)
   val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
+
+  (** Forwards any message from one chat to another (can be same chat) *)
+  val forward_message : chat_id:int -> from_chat_id:int -> message_id:int -> unit Result.result Lwt.t
+
+  (** Send an action report to the chat, to show that a command will take some time *)
+  val send_chat_action : chat_id:int -> action:ChatAction.action -> unit Result.result Lwt.t
 
   (** Send a new image file (jpeg/png) to a specified chat. Note that `photo` refers to the file's name to send. *)
   val send_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> string Result.result Lwt.t
