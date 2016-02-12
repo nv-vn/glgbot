@@ -314,7 +314,7 @@ module Document = struct
     create ~file_id ~thumb ~file_name ~mime_type ~file_size ()
 
   module Out = struct
-    type audio = {
+    type document = {
       chat_id             : int;
       document            : string;
       reply_to_message_id : int option;

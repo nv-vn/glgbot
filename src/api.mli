@@ -187,6 +187,23 @@ module Document : sig
   val create : file_id:string -> ?thumb:PhotoSize.photo_size option -> ?file_name:string option -> ?mime_type:string option -> ?file_size:int option -> unit -> document
   (** Read a `document` out of some JSON *)
   val read : json -> document
+
+  (** This module is used to deal with outgoing documents *)
+  module Out : sig
+    (** Represents the document voice message. Note that the `document` field can either be an existing file id or the raw bytes from a file *)
+    type document = {
+      chat_id             : int;
+      document            : string;
+      reply_to_message_id : int option;
+      reply_markup        : ReplyMarkup.reply_markup option
+    }
+    (** Create a `document` in a concise manner *)
+    val create : chat_id:int -> document:string -> ?reply_to:int option -> ?reply_markup:ReplyMarkup.reply_markup option -> unit -> document
+    (** Prepare a `document` for sending -- used in the case of a file id *)
+    val prepare : document -> string
+    (** Prepare a `document` for sending -- used in the case of the raw bytes *)
+    val prepare_multipart : document -> string -> string Lwt.t
+  end
 end
 
 module Sticker : sig
