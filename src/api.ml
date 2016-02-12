@@ -685,8 +685,13 @@ module Command = struct
     | ResendAudio of int * string * string * string * int option
     | SendDocument of int * string * int option * (string Result.result -> action)
     | ResendDocument of int * string * int option
+    | SendSticker of int * string * int option * (string Result.result -> action)
+    | ResendSticker of int * string * int option
+    | SendVideo of int * string * int option * string option * int option * (string Result.result -> action)
+    | ResendVideo of int * string * int option * string option * int option
     | SendVoice of int * string * int option * (string Result.result -> action)
     | ResendVoice of int * string * int option
+    | SendLocation of int * float * float * int option
     | GetUpdates of (Update.update list Result.result -> action)
     | PeekUpdate of (Update.update Result.result -> action)
     | PopUpdate of (Update.update Result.result -> action)
@@ -1031,8 +1036,13 @@ module Mk (B : BOT) = struct
     | ResendAudio (chat_id, audio, performer, title, reply_to) -> resend_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun _ -> return ()
     | SendDocument (chat_id, document, reply_to, f) -> send_document ~chat_id ~document ~reply_to >>= fun x -> evaluator (f x)
     | ResendDocument (chat_id, document, reply_to) -> resend_document ~chat_id ~document ~reply_to >>= fun _ -> return ()
+    | SendSticker (chat_id, sticker, reply_to, f) -> send_sticker ~chat_id ~sticker ~reply_to >>= fun x -> evaluator (f x)
+    | SendVideo (chat_id, video, duration, caption, reply_to, f) -> send_video ~chat_id ~video ~duration ~caption ~reply_to >>= fun x -> evaluator (f x)
+    | ResendVideo (chat_id, video, duration, caption, reply_to) -> resend_video ~chat_id ~video ~duration ~caption ~reply_to >>= fun _ -> return ()
+    | ResendSticker (chat_id, sticker, reply_to) -> resend_sticker ~chat_id ~sticker ~reply_to >>= fun _ -> return ()
     | SendVoice (chat_id, voice, reply_to, f) -> send_voice ~chat_id ~voice ~reply_to >>= fun x -> evaluator (f x)
     | ResendVoice (chat_id, voice, reply_to) -> resend_voice ~chat_id ~voice ~reply_to >>= fun _ -> return ()
+    | SendLocation (chat_id, latitude, longitude, reply_to) -> send_location ~chat_id ~latitude ~longitude ~reply_to >>= fun _ -> return ()
     | GetUpdates f -> get_updates >>= fun x -> evaluator (f x)
     | PeekUpdate f -> peek_update >>= fun x -> evaluator (f x)
     | PopUpdate f -> pop_update () >>= fun x -> evaluator (f x)

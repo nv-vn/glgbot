@@ -443,8 +443,13 @@ module Command : sig
     | ResendAudio of int * string * string * string * int option
     | SendDocument of int * string * int option * (string Result.result -> action)
     | ResendDocument of int * string * int option
+    | SendSticker of int * string * int option * (string Result.result -> action)
+    | ResendSticker of int * string * int option
+    | SendVideo of int * string * int option * string option * int option * (string Result.result -> action)
+    | ResendVideo of int * string * int option * string option * int option
     | SendVoice of int * string * int option * (string Result.result -> action)
     | ResendVoice of int * string * int option
+    | SendLocation of int * float * float * int option
     | GetUpdates of (Update.update list Result.result -> action)
     | PeekUpdate of (Update.update Result.result -> action)
     | PopUpdate of (Update.update Result.result -> action)
