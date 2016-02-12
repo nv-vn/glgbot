@@ -321,8 +321,8 @@ module Document = struct
       reply_markup        : ReplyMarkup.reply_markup option
     }
 
-    let create ~chat_id ~document ?(reply_to = None) () =
-      {chat_id; document; reply_to_message_id = reply_to; reply_markup = None}
+    let create ~chat_id ~document ?(reply_to = None) ?(reply_markup = None) () =
+      {chat_id; document; reply_to_message_id = reply_to; reply_markup}
 
     let prepare = function
     | {chat_id; document; reply_to_message_id; reply_markup} ->
@@ -358,6 +358,31 @@ module Sticker = struct
     let thumb = PhotoSize.read <$> get_opt_field "thumb" obj in
     let file_size = the_int <$> get_opt_field "file_size" obj in
     create ~file_id ~width ~height ~thumb ~file_size ()
+
+  module Out = struct
+    type sticker = {
+      chat_id             : int;
+      sticker             : string;
+      reply_to_message_id : int option;
+      reply_markup        : ReplyMarkup.reply_markup option
+    }
+
+    let create ~chat_id ~sticker ?(reply_to = None) ?(reply_markup = None) () =
+      {chat_id; sticker; reply_to_message_id = reply_to; reply_markup}
+
+    let prepare = function
+    | {chat_id; sticker; reply_to_message_id; reply_markup} ->
+      let json = `Assoc ([("chat_id", `Int chat_id);
+                          ("sticker", `String sticker)] +? ("reply_to_message_id", this_int <$> reply_to_message_id)
+                                                        +? ("reply_markup", ReplyMarkup.prepare <$> reply_markup)) in
+      Yojson.Safe.to_string json
+
+    let prepare_multipart = function
+      | {chat_id; sticker; reply_to_message_id; reply_markup} ->
+        let fields = [("chat_id", string_of_int chat_id)] +? ("reply_to_message_id", string_of_int <$> reply_to_message_id)
+                                                          +? ("reply_markup", Yojson.Safe.to_string <$> (ReplyMarkup.prepare <$> reply_markup)) in
+        InputFile.multipart_body fields ("sticker", sticker, "image/webp") (* FIXME? *)
+  end
 end
 
 module Video = struct
@@ -383,6 +408,43 @@ module Video = struct
     let mime_type = the_string <$> get_opt_field "mime_type" obj in
     let file_size = the_int <$> get_opt_field "file_size" obj in
     create ~file_id ~width ~height ~duration ~thumb ~mime_type ~file_size ()
+
+  module Out = struct
+    type video = {
+      chat_id             : int;
+      video               : string;
+      duration            : int option;
+      caption             : string option;
+      reply_to_message_id : int option;
+      reply_markup        : ReplyMarkup.reply_markup option
+    }
+
+    let create ~chat_id ~video ?(duration = None) ?(caption = None) ?(reply_to = None) ?(reply_markup = None) () =
+      {chat_id; video; duration; caption; reply_to_message_id = reply_to; reply_markup}
+
+    let prepare = function
+    | {chat_id; video; duration; caption; reply_to_message_id; reply_markup} ->
+      let json = `Assoc ([("chat_id", `Int chat_id);
+                          ("video", `String video)] +? ("duration", this_int <$> duration)
+                                                    +? ("caption", this_string <$> caption)
+                                                    +? ("reply_to_message_id", this_int <$> reply_to_message_id)
+                                                    +? ("reply_markup", ReplyMarkup.prepare <$> reply_markup)) in
+      Yojson.Safe.to_string json
+
+    let prepare_multipart = function
+      | {chat_id; video; duration; caption; reply_to_message_id; reply_markup} ->
+        let fields = [("chat_id", string_of_int chat_id)] +? ("duration", string_of_int <$> duration)
+                                                          +? ("caption", caption)
+                                                          +? ("reply_to_message_id", string_of_int <$> reply_to_message_id)
+                                                          +? ("reply_markup", Yojson.Safe.to_string <$> (ReplyMarkup.prepare <$> reply_markup)) in
+        let open Batteries.String in
+        let mime =
+          if ends_with video ".mp4" then "video/mp4" else
+          if ends_with video ".mov" then "video/quicktime" else
+          if ends_with video ".avi" then "video/x-msvideo" else
+          if ends_with video ".webm" then "video/webm" else "text/plain" in
+        InputFile.multipart_body fields ("video", video, mime)
+  end
 end
 
 module Voice = struct
@@ -464,6 +526,27 @@ module Location = struct
     let longitude = the_float @@ get_field "longitude" obj in
     let latitude = the_float @@ get_field "latitude" obj in
     create ~longitude ~latitude ()
+
+  module Out = struct
+    type location = {
+      chat_id             : int;
+      latitude            : float;
+      longitude           : float;
+      reply_to_message_id : int option;
+      reply_markup        : ReplyMarkup.reply_markup option
+    }
+
+    let create ~chat_id ~latitude ~longitude ?(reply_to = None) ?(reply_markup = None) () =
+      {chat_id; latitude; longitude; reply_to_message_id = reply_to; reply_markup}
+
+    let prepare = function
+    | {chat_id; latitude; longitude; reply_to_message_id; reply_markup} ->
+      let json = `Assoc ([("chat_id", `Int chat_id);
+                          ("latitude", `Float latitude);
+                          ("longitude", `Float longitude)] +? ("reply_to_message_id", this_int <$> reply_to_message_id)
+                                                           +? ("reply_markup", ReplyMarkup.prepare <$> reply_markup)) in
+      Yojson.Safe.to_string json
+  end
 end
 
 module Message = struct
@@ -820,6 +903,11 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success ()
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
+  (* TODO: Rename this & move elsewhere... *)
+  let hd_ = function
+    | [] -> Result.Failure "Could not get head"
+    | x::_ -> Result.Success x
+
   let get_updates =
     Client.get (Uri.of_string (url ^ "getUpdates")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -836,11 +924,6 @@ module Mk (B : BOT) = struct
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "getUpdates")) >>= fun _ ->
     return ()
-
-  (* TODO: Rename this & move elsewhere... *)
-  let hd_ = function
-    | [] -> Result.Failure "Could not get head"
-    | x::_ -> Result.Success x
 
   let peek_update =
     let open Update in

@@ -202,6 +202,23 @@ module Sticker : sig
   val create : file_id:string -> width:int -> height:int -> ?thumb:PhotoSize.photo_size option -> ?file_size:int option -> unit -> sticker
   (** Read a `sticker` out of some JSON *)
   val read : json -> sticker
+
+  (** This module deals with outgoing sticker messages *)
+  module Out : sig
+    (** Represents the outgoing sticker message. Note that the `sticker` field can either be an existing file id or the raw bytes from a file *)
+    type sticker = {
+      chat_id             : int;
+      sticker             : string;
+      reply_to_message_id : int option;
+      reply_markup        : ReplyMarkup.reply_markup option
+    }
+    (** Create a `sticker` in a concise manner *)
+    val create : chat_id:int -> sticker:string -> ?reply_to:int option -> ?reply_markup:ReplyMarkup.reply_markup option -> unit -> sticker
+    (** Prepare a `sticker` for sending -- used in the case of a file id *)
+    val prepare : sticker -> string
+    (** Prepare a `sticker for sending -- used in the case of the raw bytes *)
+    val prepare_multipart : sticker -> string -> string Lwt.t
+  end
 end
 
 module Video : sig
@@ -219,6 +236,25 @@ module Video : sig
   val create : file_id:string -> width:int -> height:int -> duration:int -> ?thumb:PhotoSize.photo_size option -> ?mime_type:string option -> ?file_size:int option -> unit -> video
   (** Read a `video` out of some JSON *)
   val read : json -> video
+
+  (** This module deals with outgoing video messages *)
+  module Out : sig
+    (** Represents the outgoing video message. Note that the `video` field can either be an existing file id or the raw bytes from a file *)
+    type video = {
+      chat_id             : int;
+      video               : string;
+      duration            : int option;
+      caption             : string option;
+      reply_to_message_id : int option;
+      reply_markup        : ReplyMarkup.reply_markup option
+    }
+    (** Create a `video` in a concise manner *)
+    val create : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> ?reply_to:int option -> ?reply_markup:ReplyMarkup.reply_markup option -> unit -> video
+    (** Prepare a `video` for sending -- used in the case of a file id *)
+    val prepare : video -> string
+    (** Prepare a `video for sending -- used in the case of the raw bytes *)
+    val prepare_multipart : video -> string -> string Lwt.t
+  end
 end
 
 module Voice : sig
@@ -277,6 +313,22 @@ module Location : sig
   val create : longitude:float -> latitude:float -> unit -> location
   (** Read a `location` out of some JSON *)
   val read : json -> location
+
+  (** This module deals with outgoing location messages *)
+  module Out : sig
+    (** Represents the outgoing location message *)
+    type location = {
+      chat_id             : int;
+      latitude            : float;
+      longitude           : float;
+      reply_to_message_id : int option;
+      reply_markup        : ReplyMarkup.reply_markup option
+    }
+    (** Create a `location` in a concise manner *)
+    val create : chat_id:int -> latitude:float -> longitude:float -> ?reply_to:int option -> ?reply_markup:ReplyMarkup.reply_markup option -> unit -> location
+    (** Prepare a `location` for sending *)
+    val prepare : location -> string
+  end
 end
 
 module Message : sig
