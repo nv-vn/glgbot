@@ -519,11 +519,26 @@ module type TELEGRAM_BOT = sig
   (** Send an existing document file to a specified chat. Note that `document` refers to the file's id on the Telegram servers. *)
   val resend_document : chat_id:int -> document:string -> reply_to:int option -> unit Result.result Lwt.t
 
+  (** Send a new sticker file (webp) to a specified chat. Note that `sticker` refers to the file's name to send. *)
+  val send_sticker : chat_id:int -> sticker:string -> reply_to:int option -> string Result.result Lwt.t
+
+  (** Send an existing sticker file (webp) to a specified chat. Note that `sticker` refers to the file's id on the Telegram servers. *)
+  val resend_sticker : chat_id:int -> sticker:string -> reply_to:int option -> unit Result.result Lwt.t
+
+  (** Send a new video file (mp4/mov/webm) to a specified chat. Note that `video` refers to the file's name to send. *)
+  val send_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> string Result.result Lwt.t
+
+  (** Send an existing video (mp4/mov/webm) file to a specified chat. Note that `video` refers to the file's id on the Telegram servers. *)
+  val resend_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> unit Result.result Lwt.t
+
   (** Send a new voice message (ogg) to a specified chat. Note that `voice` refers to the file's name to send. *)
   val send_voice : chat_id:int -> voice:string -> reply_to:int option -> string Result.result Lwt.t
 
   (** Send an existing voice message (ogg) to a specified chat. Note that `voice` refers to the file's id on the Telegram servers. *)
   val resend_voice : chat_id:int -> voice:string -> reply_to:int option -> unit Result.result Lwt.t
+
+  (** Send a location to a specified chat *)
+  val send_location : chat_id:int -> latitude:float -> longitude:float -> reply_to:int option -> unit Result.result Lwt.t
 
   (** Get a list of all available updates that the bot has received *)
   val get_updates : Update.update list Result.result Lwt.t

@@ -753,8 +753,13 @@ module type TELEGRAM_BOT = sig
   val resend_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
   val send_document : chat_id:int -> document:string -> reply_to:int option -> string Result.result Lwt.t
   val resend_document : chat_id:int -> document:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_sticker : chat_id:int -> sticker:string -> reply_to:int option -> string Result.result Lwt.t
+  val resend_sticker : chat_id:int -> sticker:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> string Result.result Lwt.t
+  val resend_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> unit Result.result Lwt.t
   val send_voice : chat_id:int -> voice:string -> reply_to:int option -> string Result.result Lwt.t
   val resend_voice : chat_id:int -> voice:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_location : chat_id:int -> latitude:float -> longitude:float -> reply_to:int option -> unit Result.result Lwt.t
   val get_updates : Update.update list Result.result Lwt.t
   val peek_update : Update.update Result.result Lwt.t
   val pop_update : ?run_cmds:bool -> unit -> Update.update Result.result Lwt.t
@@ -882,6 +887,48 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success ()
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
+   let send_video ~chat_id ~video ?(duration = None) ?(caption = None) ~reply_to =
+    let boundary = "--1234567890" in
+    Video.Out.prepare_multipart (Video.Out.create ~chat_id ~video ~duration ~caption ~reply_to ()) boundary >>= fun body ->
+    let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendVideo")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "video" @@ get_field "result" obj)
+    | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
+
+  let resend_video ~chat_id ~video ?(duration = None) ?(caption = None) ~reply_to =
+    let body = Video.Out.prepare @@ Video.Out.create ~chat_id ~video ~duration ~caption ~reply_to () in
+    let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendVideo")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success ()
+    | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
+
+   let send_sticker ~chat_id ~sticker ~reply_to =
+    let boundary = "--1234567890" in
+    Sticker.Out.prepare_multipart (Sticker.Out.create ~chat_id ~sticker ~reply_to ()) boundary >>= fun body ->
+    let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendSticker")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "sticker" @@ get_field "result" obj)
+    | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
+
+  let resend_sticker ~chat_id ~sticker ~reply_to =
+    let body = Sticker.Out.prepare @@ Sticker.Out.create ~chat_id ~sticker ~reply_to () in
+    let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendSticker")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success ()
+    | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
+
   let send_voice ~chat_id ~voice ~reply_to =
     let boundary = "---1234567890" in
     Voice.Out.prepare_multipart (Voice.Out.create ~chat_id ~voice ~reply_to ()) boundary >>= fun body ->
@@ -897,6 +944,16 @@ module Mk (B : BOT) = struct
     let body = Voice.Out.prepare @@ Voice.Out.create ~chat_id ~voice ~reply_to () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendVoice")) >>= fun (resp, body) ->
+    Cohttp_lwt_body.to_string body >>= fun json ->
+    let obj = Yojson.Safe.from_string json in
+    return @@ match get_field "ok" obj with
+    | `Bool true -> Result.Success ()
+    | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
+
+  let send_location ~chat_id ~latitude ~longitude ~reply_to =
+    let body = Location.Out.prepare @@ Location.Out.create ~chat_id ~latitude ~longitude ~reply_to () in
+    let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
+    Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendLocation")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
     let obj = Yojson.Safe.from_string json in
     return @@ match get_field "ok" obj with
