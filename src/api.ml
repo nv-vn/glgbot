@@ -676,7 +676,7 @@ module Command = struct
   type action =
     | Nothing
     | GetMe of (User.user Result.result -> action)
-    | SendMessage of int * string
+    | SendMessage of int * string * int option
     | ForwardMessage of int * int * int
     | SendChatAction of int * ChatAction.action
     | SendPhoto of int * string * string option * int option * (string Result.result -> action)
@@ -749,7 +749,7 @@ module type TELEGRAM_BOT = sig
   val commands : Command.command list
 
   val get_me : User.user Result.result Lwt.t
-  val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
+  val send_message : chat_id:int -> text:string -> reply_to:int option -> unit Result.result Lwt.t
   val forward_message : chat_id:int -> from_chat_id:int -> message_id:int -> unit Result.result Lwt.t
   val send_chat_action : chat_id:int -> action:ChatAction.action -> unit Result.result Lwt.t
   val send_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> string Result.result Lwt.t
@@ -782,7 +782,7 @@ module Mk (B : BOT) = struct
     let open Chat in
     let open Message in
     {name = "help"; description = "Show this message"; enabled = true; run = function
-         | {chat} -> SendMessage (chat.id, "Commands:" ^ Command.make_help commands)} :: B.commands
+         | {chat} -> SendMessage (chat.id, "Commands:" ^ Command.make_help commands, None)} :: B.commands
 
   let get_me =
     Client.get (Uri.of_string (url ^ "getMe")) >>= fun (resp, body) ->
@@ -792,9 +792,9 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success (User.read @@ get_field "result" obj)
     | _ -> Result.Failure (the_string @@ get_field "description" obj)
 
-  let send_message ~chat_id ~text =
-    let json = `Assoc [("chat_id", `Int chat_id);
-                       ("text", `String text)] in
+  let send_message ~chat_id ~text ~reply_to =
+    let json = `Assoc ([("chat_id", `Int chat_id);
+                        ("text", `String text)] +? ("reply_to_message_id", this_int <$> reply_to)) in
     let body = Yojson.Safe.to_string json in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendMessage")) >>= fun (resp, body) ->
@@ -1027,7 +1027,7 @@ module Mk (B : BOT) = struct
   and evaluator = function
     | Nothing -> return ()
     | GetMe f -> get_me >>= fun x -> evaluator (f x)
-    | SendMessage (chat_id, text) -> send_message ~chat_id ~text >>= fun _ -> return ()
+    | SendMessage (chat_id, text, reply_to) -> send_message ~chat_id ~text ~reply_to >>= fun _ -> return ()
     | ForwardMessage (chat_id, from_chat_id, message_id) -> forward_message ~chat_id ~from_chat_id ~message_id >>= fun _ -> return ()
     | SendChatAction (chat_id, action) -> send_chat_action ~chat_id ~action >>= fun _ -> return ()
     | SendPhoto (chat_id, photo, caption, reply_to, f) -> send_photo ~chat_id ~photo ~caption ~reply_to >>= fun x -> evaluator (f x)

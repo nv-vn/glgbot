@@ -434,7 +434,7 @@ module Command : sig
   type action =
     | Nothing
     | GetMe of (User.user Result.result -> action)
-    | SendMessage of int * string
+    | SendMessage of int * string * int option
     | ForwardMessage of int * int * int
     | SendChatAction of int * ChatAction.action
     | SendPhoto of int * string * string option * int option * (string Result.result -> action)
@@ -498,7 +498,7 @@ module type TELEGRAM_BOT = sig
   val get_me : User.user Result.result Lwt.t
 
   (** Send a text message to a specified chat *)
-  val send_message : chat_id:int -> text:string -> unit Result.result Lwt.t
+  val send_message : chat_id:int -> text:string -> reply_to:int option -> unit Result.result Lwt.t
 
   (** Forwards any message from one chat to another (can be same chat) *)
   val forward_message : chat_id:int -> from_chat_id:int -> message_id:int -> unit Result.result Lwt.t
