@@ -676,22 +676,22 @@ module Command = struct
   type action =
     | Nothing
     | GetMe of (User.user Result.result -> action)
-    | SendMessage of int * string * int option
+    | SendMessage of int * string * int option * ReplyMarkup.reply_markup option
     | ForwardMessage of int * int * int
     | SendChatAction of int * ChatAction.action
-    | SendPhoto of int * string * string option * int option * (string Result.result -> action)
-    | ResendPhoto of int * string * string option * int option
-    | SendAudio of int * string * string * string * int option * (string Result.result -> action)
-    | ResendAudio of int * string * string * string * int option
-    | SendDocument of int * string * int option * (string Result.result -> action)
-    | ResendDocument of int * string * int option
-    | SendSticker of int * string * int option * (string Result.result -> action)
-    | ResendSticker of int * string * int option
-    | SendVideo of int * string * int option * string option * int option * (string Result.result -> action)
-    | ResendVideo of int * string * int option * string option * int option
-    | SendVoice of int * string * int option * (string Result.result -> action)
-    | ResendVoice of int * string * int option
-    | SendLocation of int * float * float * int option
+    | SendPhoto of int * string * string option * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendPhoto of int * string * string option * int option * ReplyMarkup.reply_markup option
+    | SendAudio of int * string * string * string * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendAudio of int * string * string * string * int option * ReplyMarkup.reply_markup option
+    | SendDocument of int * string * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendDocument of int * string * int option * ReplyMarkup.reply_markup option
+    | SendSticker of int * string * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendSticker of int * string * int option * ReplyMarkup.reply_markup option
+    | SendVideo of int * string * int option * string option * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendVideo of int * string * int option * string option * int option * ReplyMarkup.reply_markup option
+    | SendVoice of int * string * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendVoice of int * string * int option * ReplyMarkup.reply_markup option
+    | SendLocation of int * float * float * int option * ReplyMarkup.reply_markup option
     | GetUpdates of (Update.update list Result.result -> action)
     | PeekUpdate of (Update.update Result.result -> action)
     | PopUpdate of (Update.update Result.result -> action)
@@ -749,22 +749,22 @@ module type TELEGRAM_BOT = sig
   val commands : Command.command list
 
   val get_me : User.user Result.result Lwt.t
-  val send_message : chat_id:int -> text:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_message : chat_id:int -> text:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
   val forward_message : chat_id:int -> from_chat_id:int -> message_id:int -> unit Result.result Lwt.t
   val send_chat_action : chat_id:int -> action:ChatAction.action -> unit Result.result Lwt.t
-  val send_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> string Result.result Lwt.t
-  val resend_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> unit Result.result Lwt.t
-  val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> string Result.result Lwt.t
-  val resend_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
-  val send_document : chat_id:int -> document:string -> reply_to:int option -> string Result.result Lwt.t
-  val resend_document : chat_id:int -> document:string -> reply_to:int option -> unit Result.result Lwt.t
-  val send_sticker : chat_id:int -> sticker:string -> reply_to:int option -> string Result.result Lwt.t
-  val resend_sticker : chat_id:int -> sticker:string -> reply_to:int option -> unit Result.result Lwt.t
-  val send_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> string Result.result Lwt.t
-  val resend_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> unit Result.result Lwt.t
-  val send_voice : chat_id:int -> voice:string -> reply_to:int option -> string Result.result Lwt.t
-  val resend_voice : chat_id:int -> voice:string -> reply_to:int option -> unit Result.result Lwt.t
-  val send_location : chat_id:int -> latitude:float -> longitude:float -> reply_to:int option -> unit Result.result Lwt.t
+  val send_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
+  val resend_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
+  val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
+  val resend_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
+  val send_document : chat_id:int -> document:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
+  val resend_document : chat_id:int -> document:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
+  val send_sticker : chat_id:int -> sticker:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
+  val resend_sticker : chat_id:int -> sticker:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
+  val send_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
+  val resend_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
+  val send_voice : chat_id:int -> voice:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
+  val resend_voice : chat_id:int -> voice:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
+  val send_location : chat_id:int -> latitude:float -> longitude:float -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
   val get_updates : Update.update list Result.result Lwt.t
   val peek_update : Update.update Result.result Lwt.t
   val pop_update : ?run_cmds:bool -> unit -> Update.update Result.result Lwt.t
@@ -782,7 +782,7 @@ module Mk (B : BOT) = struct
     let open Chat in
     let open Message in
     {name = "help"; description = "Show this message"; enabled = true; run = function
-         | {chat} -> SendMessage (chat.id, "Commands:" ^ Command.make_help commands, None)} :: B.commands
+         | {chat} -> SendMessage (chat.id, "Commands:" ^ Command.make_help commands, None, None)} :: B.commands
 
   let get_me =
     Client.get (Uri.of_string (url ^ "getMe")) >>= fun (resp, body) ->
@@ -792,9 +792,10 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success (User.read @@ get_field "result" obj)
     | _ -> Result.Failure (the_string @@ get_field "description" obj)
 
-  let send_message ~chat_id ~text ~reply_to =
+  let send_message ~chat_id ~text ~reply_to ~reply_markup =
     let json = `Assoc ([("chat_id", `Int chat_id);
-                        ("text", `String text)] +? ("reply_to_message_id", this_int <$> reply_to)) in
+                        ("text", `String text)] +? ("reply_to_message_id", this_int <$> reply_to)
+                                                +? ("reply_markup", ReplyMarkup.prepare <$> reply_markup)) in
     let body = Yojson.Safe.to_string json in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendMessage")) >>= fun (resp, body) ->
@@ -829,9 +830,9 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success ()
     | _ -> Result.Failure (the_string @@ get_field "description" obj)
 
-  let send_photo ~chat_id ~photo ?(caption = None) ~reply_to =
+  let send_photo ~chat_id ~photo ?(caption = None) ~reply_to ~reply_markup =
     let boundary = "--1234567890" in
-    PhotoSize.Out.prepare_multipart (PhotoSize.Out.create ~chat_id ~photo ~caption ~reply_to ()) boundary >>= fun body ->
+    PhotoSize.Out.prepare_multipart (PhotoSize.Out.create ~chat_id ~photo ~caption ~reply_to ~reply_markup ()) boundary >>= fun body ->
     let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendPhoto")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -840,8 +841,8 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ List.hd @@ the_list @@ get_field "photo" @@ get_field "result" obj)
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-  let resend_photo ~chat_id ~photo ?(caption = None) ~reply_to =
-    let body = PhotoSize.Out.prepare @@ PhotoSize.Out.create ~chat_id ~photo ~caption ~reply_to () in
+  let resend_photo ~chat_id ~photo ?(caption = None) ~reply_to ~reply_markup =
+    let body = PhotoSize.Out.prepare @@ PhotoSize.Out.create ~chat_id ~photo ~caption ~reply_to ~reply_markup () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendPhoto")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -850,9 +851,9 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success ()
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-  let send_audio ~chat_id ~audio ~performer ~title ~reply_to =
+  let send_audio ~chat_id ~audio ~performer ~title ~reply_to ~reply_markup =
     let boundary = "---1234567890" in
-    Audio.Out.prepare_multipart (Audio.Out.create ~chat_id ~audio ~performer ~title ~reply_to ()) boundary >>= fun body ->
+    Audio.Out.prepare_multipart (Audio.Out.create ~chat_id ~audio ~performer ~title ~reply_to ~reply_markup ()) boundary >>= fun body ->
     let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendAudio")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -861,8 +862,8 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "audio" @@ get_field "result" obj)
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-  let resend_audio ~chat_id ~audio ~performer ~title ~reply_to =
-    let body = Audio.Out.prepare @@ Audio.Out.create ~chat_id ~audio ~performer ~title ~reply_to () in
+  let resend_audio ~chat_id ~audio ~performer ~title ~reply_to ~reply_markup =
+    let body = Audio.Out.prepare @@ Audio.Out.create ~chat_id ~audio ~performer ~title ~reply_to ~reply_markup () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendAudio")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -871,9 +872,9 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success ()
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-  let send_document ~chat_id ~document ~reply_to =
+  let send_document ~chat_id ~document ~reply_to ~reply_markup =
     let boundary = "--1234567890" in
-    Document.Out.prepare_multipart (Document.Out.create ~chat_id ~document ~reply_to ()) boundary >>= fun body ->
+    Document.Out.prepare_multipart (Document.Out.create ~chat_id ~document ~reply_to ~reply_markup ()) boundary >>= fun body ->
     let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendDocument")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -882,8 +883,8 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "document" @@ get_field "result" obj)
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-  let resend_document ~chat_id ~document ~reply_to =
-    let body = Document.Out.prepare @@ Document.Out.create ~chat_id ~document ~reply_to () in
+  let resend_document ~chat_id ~document ~reply_to ~reply_markup =
+    let body = Document.Out.prepare @@ Document.Out.create ~chat_id ~document ~reply_to ~reply_markup () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendDocument")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -892,9 +893,9 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success ()
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-   let send_video ~chat_id ~video ?(duration = None) ?(caption = None) ~reply_to =
+   let send_video ~chat_id ~video ?(duration = None) ?(caption = None) ~reply_to ~reply_markup =
     let boundary = "--1234567890" in
-    Video.Out.prepare_multipart (Video.Out.create ~chat_id ~video ~duration ~caption ~reply_to ()) boundary >>= fun body ->
+    Video.Out.prepare_multipart (Video.Out.create ~chat_id ~video ~duration ~caption ~reply_to ~reply_markup ()) boundary >>= fun body ->
     let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendVideo")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -903,8 +904,8 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "video" @@ get_field "result" obj)
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-  let resend_video ~chat_id ~video ?(duration = None) ?(caption = None) ~reply_to =
-    let body = Video.Out.prepare @@ Video.Out.create ~chat_id ~video ~duration ~caption ~reply_to () in
+  let resend_video ~chat_id ~video ?(duration = None) ?(caption = None) ~reply_to ~reply_markup =
+    let body = Video.Out.prepare @@ Video.Out.create ~chat_id ~video ~duration ~caption ~reply_to ~reply_markup () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendVideo")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -913,9 +914,9 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success ()
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-   let send_sticker ~chat_id ~sticker ~reply_to =
+   let send_sticker ~chat_id ~sticker ~reply_to ~reply_markup =
     let boundary = "--1234567890" in
-    Sticker.Out.prepare_multipart (Sticker.Out.create ~chat_id ~sticker ~reply_to ()) boundary >>= fun body ->
+    Sticker.Out.prepare_multipart (Sticker.Out.create ~chat_id ~sticker ~reply_to ~reply_markup ()) boundary >>= fun body ->
     let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendSticker")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -924,8 +925,8 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "sticker" @@ get_field "result" obj)
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-  let resend_sticker ~chat_id ~sticker ~reply_to =
-    let body = Sticker.Out.prepare @@ Sticker.Out.create ~chat_id ~sticker ~reply_to () in
+  let resend_sticker ~chat_id ~sticker ~reply_to ~reply_markup =
+    let body = Sticker.Out.prepare @@ Sticker.Out.create ~chat_id ~sticker ~reply_to ~reply_markup () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendSticker")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -934,9 +935,9 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success ()
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-  let send_voice ~chat_id ~voice ~reply_to =
+  let send_voice ~chat_id ~voice ~reply_to ~reply_markup =
     let boundary = "---1234567890" in
-    Voice.Out.prepare_multipart (Voice.Out.create ~chat_id ~voice ~reply_to ()) boundary >>= fun body ->
+    Voice.Out.prepare_multipart (Voice.Out.create ~chat_id ~voice ~reply_to ~reply_markup ()) boundary >>= fun body ->
     let headers = Cohttp.Header.init_with "Content-Type" ("multipart/form-data; boundary=" ^ boundary) in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendVoice")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -945,8 +946,8 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success (the_string @@ get_field "file_id" @@ get_field "voice" @@ get_field "result" obj)
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-  let resend_voice ~chat_id ~voice ~reply_to =
-    let body = Voice.Out.prepare @@ Voice.Out.create ~chat_id ~voice ~reply_to () in
+  let resend_voice ~chat_id ~voice ~reply_to ~reply_markup =
+    let body = Voice.Out.prepare @@ Voice.Out.create ~chat_id ~voice ~reply_to ~reply_markup () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendVoice")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -955,8 +956,8 @@ module Mk (B : BOT) = struct
     | `Bool true -> Result.Success ()
     | _ -> Result.Failure ((fun x -> print_endline x; x) @@ the_string @@ get_field "description" obj)
 
-  let send_location ~chat_id ~latitude ~longitude ~reply_to =
-    let body = Location.Out.prepare @@ Location.Out.create ~chat_id ~latitude ~longitude ~reply_to () in
+  let send_location ~chat_id ~latitude ~longitude ~reply_to ~reply_markup =
+    let body = Location.Out.prepare @@ Location.Out.create ~chat_id ~latitude ~longitude ~reply_to ~reply_markup () in
     let headers = Cohttp.Header.init_with "Content-Type" "application/json" in
     Client.post ~headers ~body:(Cohttp_lwt_body.of_string body) (Uri.of_string (url ^ "sendLocation")) >>= fun (resp, body) ->
     Cohttp_lwt_body.to_string body >>= fun json ->
@@ -1027,22 +1028,22 @@ module Mk (B : BOT) = struct
   and evaluator = function
     | Nothing -> return ()
     | GetMe f -> get_me >>= fun x -> evaluator (f x)
-    | SendMessage (chat_id, text, reply_to) -> send_message ~chat_id ~text ~reply_to >>= fun _ -> return ()
+    | SendMessage (chat_id, text, reply_to, reply_markup) -> send_message ~chat_id ~text ~reply_to ~reply_markup >>= fun _ -> return ()
     | ForwardMessage (chat_id, from_chat_id, message_id) -> forward_message ~chat_id ~from_chat_id ~message_id >>= fun _ -> return ()
     | SendChatAction (chat_id, action) -> send_chat_action ~chat_id ~action >>= fun _ -> return ()
-    | SendPhoto (chat_id, photo, caption, reply_to, f) -> send_photo ~chat_id ~photo ~caption ~reply_to >>= fun x -> evaluator (f x)
-    | ResendPhoto (chat_id, photo, caption, reply_to) -> resend_photo ~chat_id ~photo ~caption ~reply_to >>= fun _ -> return ()
-    | SendAudio (chat_id, audio, performer, title, reply_to, f) -> send_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun x -> evaluator (f x)
-    | ResendAudio (chat_id, audio, performer, title, reply_to) -> resend_audio ~chat_id ~audio ~performer ~title ~reply_to >>= fun _ -> return ()
-    | SendDocument (chat_id, document, reply_to, f) -> send_document ~chat_id ~document ~reply_to >>= fun x -> evaluator (f x)
-    | ResendDocument (chat_id, document, reply_to) -> resend_document ~chat_id ~document ~reply_to >>= fun _ -> return ()
-    | SendSticker (chat_id, sticker, reply_to, f) -> send_sticker ~chat_id ~sticker ~reply_to >>= fun x -> evaluator (f x)
-    | SendVideo (chat_id, video, duration, caption, reply_to, f) -> send_video ~chat_id ~video ~duration ~caption ~reply_to >>= fun x -> evaluator (f x)
-    | ResendVideo (chat_id, video, duration, caption, reply_to) -> resend_video ~chat_id ~video ~duration ~caption ~reply_to >>= fun _ -> return ()
-    | ResendSticker (chat_id, sticker, reply_to) -> resend_sticker ~chat_id ~sticker ~reply_to >>= fun _ -> return ()
-    | SendVoice (chat_id, voice, reply_to, f) -> send_voice ~chat_id ~voice ~reply_to >>= fun x -> evaluator (f x)
-    | ResendVoice (chat_id, voice, reply_to) -> resend_voice ~chat_id ~voice ~reply_to >>= fun _ -> return ()
-    | SendLocation (chat_id, latitude, longitude, reply_to) -> send_location ~chat_id ~latitude ~longitude ~reply_to >>= fun _ -> return ()
+    | SendPhoto (chat_id, photo, caption, reply_to, reply_markup, f) -> send_photo ~chat_id ~photo ~caption ~reply_to ~reply_markup >>= fun x -> evaluator (f x)
+    | ResendPhoto (chat_id, photo, caption, reply_to, reply_markup) -> resend_photo ~chat_id ~photo ~caption ~reply_to ~reply_markup >>= fun _ -> return ()
+    | SendAudio (chat_id, audio, performer, title, reply_to, reply_markup, f) -> send_audio ~chat_id ~audio ~performer ~title ~reply_to ~reply_markup >>= fun x -> evaluator (f x)
+    | ResendAudio (chat_id, audio, performer, title, reply_to, reply_markup) -> resend_audio ~chat_id ~audio ~performer ~title ~reply_to ~reply_markup >>= fun _ -> return ()
+    | SendDocument (chat_id, document, reply_to, reply_markup, f) -> send_document ~chat_id ~document ~reply_to ~reply_markup >>= fun x -> evaluator (f x)
+    | ResendDocument (chat_id, document, reply_to, reply_markup) -> resend_document ~chat_id ~document ~reply_to ~reply_markup >>= fun _ -> return ()
+    | SendSticker (chat_id, sticker, reply_to, reply_markup, f) -> send_sticker ~chat_id ~sticker ~reply_to ~reply_markup >>= fun x -> evaluator (f x)
+    | ResendSticker (chat_id, sticker, reply_to, reply_markup) -> resend_sticker ~chat_id ~sticker ~reply_to ~reply_markup >>= fun _ -> return ()
+    | SendVideo (chat_id, video, duration, caption, reply_to, reply_markup, f) -> send_video ~chat_id ~video ~duration ~caption ~reply_to ~reply_markup >>= fun x -> evaluator (f x)
+    | ResendVideo (chat_id, video, duration, caption, reply_to, reply_markup) -> resend_video ~chat_id ~video ~duration ~caption ~reply_to ~reply_markup >>= fun _ -> return ()
+    | SendVoice (chat_id, voice, reply_to, reply_markup, f) -> send_voice ~chat_id ~voice ~reply_to ~reply_markup >>= fun x -> evaluator (f x)
+    | ResendVoice (chat_id, voice, reply_to, reply_markup) -> resend_voice ~chat_id ~voice ~reply_to ~reply_markup >>= fun _ -> return ()
+    | SendLocation (chat_id, latitude, longitude, reply_to, reply_markup) -> send_location ~chat_id ~latitude ~longitude ~reply_to ~reply_markup >>= fun _ -> return ()
     | GetUpdates f -> get_updates >>= fun x -> evaluator (f x)
     | PeekUpdate f -> peek_update >>= fun x -> evaluator (f x)
     | PopUpdate f -> pop_update () >>= fun x -> evaluator (f x)

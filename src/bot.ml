@@ -17,7 +17,7 @@ module MyBot = Api.Mk (struct
     let commands =
       let open Lwt in
       let greet = function
-        | {text = Some text; chat} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg, None)
+        | {chat; message_id} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg, Some message_id, None)
         | _ -> Nothing in
       let meow_cache = ref [] in
       let meow = function
@@ -29,21 +29,21 @@ module MyBot = Api.Mk (struct
             else ();
             let len = List.length !meow_cache in
             if len = 0 then
-              SendMessage (chat.id, "Couldn't load any images", None)
+              SendMessage (chat.id, "Couldn't load any images", None, None)
             else
-              SendMessage (chat.id, List.nth !meow_cache (Random.int len), None)
+              SendMessage (chat.id, List.nth !meow_cache (Random.int len), None, None)
           end in
       let quote = function
         | {chat; reply_to_message = Some ({text = Some text} as msg)} ->
           Db.Quotes.put ~quote:text ~who:(get_sender msg) ();
-          SendMessage (chat.id, "Quoting " ^ get_sender msg ^ " who said:\n" ^ text, None)
+          SendMessage (chat.id, "Quoting " ^ get_sender msg ^ " who said:\n" ^ text, None, None)
         | {chat; reply_to_message = Some msg} ->
-          SendMessage (chat.id, "Quoting " ^ get_sender msg ^ " who said nothing", None)
+          SendMessage (chat.id, "Quoting " ^ get_sender msg ^ " who said nothing", None, None)
         | {chat} ->
           let (sender, msg, time) = Db.Quotes.get_random () in
-          SendMessage (chat.id, sender ^ " said:\n" ^ msg, None) in
+          SendMessage (chat.id, sender ^ " said:\n" ^ msg, None, None) in
       let decide = function
-        | {chat; text = Some text} ->
+        | {chat; message_id; text = Some text} ->
           let open Batteries.String in
           let all = List.filter ((<>) "") @@ List.map strip @@ Api.Command.tokenize text in
           let rec get_options buf = function
@@ -54,11 +54,11 @@ module MyBot = Api.Mk (struct
           let options = get_options [] all in
           let len = List.length options in
           if len = 0 then
-            SendMessage (chat.id, "Give me options nerd", None)
+            SendMessage (chat.id, "Give me options nerd", Some message_id, None)
           else if len = 1 then
-            SendMessage (chat.id, List.nth ["yes"; "no"] (Random.int 2), None)
+            SendMessage (chat.id, List.nth ["yes"; "no"] (Random.int 2), Some message_id, None)
           else
-            SendMessage (chat.id, List.nth options (Random.int len), None)
+            SendMessage (chat.id, List.nth options (Random.int len), Some message_id, None)
         | _ -> Nothing in
       let jukebox = function
         | {chat; text = Some text; reply_to_message = Some {audio = Some {file_id}}} -> begin
@@ -66,28 +66,28 @@ module MyBot = Api.Mk (struct
             let (_, info) = split text ~by:" " in
             let (performer, title) = split info ~by:"-" in
             Db.Jukebox.put ~title:(trim @@ title) ~performer ~file_id ();
-            SendMessage (chat.id, "Added " ^ info ^ " to the database!", None)
+            SendMessage (chat.id, "Added " ^ info ^ " to the database!", None, None)
           end
         | {chat; message_id; text = Some text} -> begin
             let open Batteries.String in
             match tokenize text with
-            | [] -> SendMessage (chat.id, concat "\n" (Db.Jukebox.list ()), None)
+            | [] -> SendMessage (chat.id, concat "\n" (Db.Jukebox.list ()), None, None)
             | xs -> begin
                 let song = trim @@ concat " " xs in
                 let (title, performer, file_id) = Db.Jukebox.search ~title:song in
-                ResendAudio (chat.id, file_id, performer, title, Some message_id)
+                ResendAudio (chat.id, file_id, performer, title, Some message_id, None)
               end
           end
-        | {chat} -> SendMessage (chat.id, "Invalid input", None) in
+        | {chat; message_id} -> SendMessage (chat.id, "Invalid input", Some message_id, None) in
       let share_audio song performer title = function
-        | {chat; message_id} -> ResendAudio (chat.id, song, performer, title, Some message_id) in
+        | {chat; message_id} -> ResendAudio (chat.id, song, performer, title, Some message_id, None) in
       let unfree = function
-        | {chat} -> SendVoice (chat.id, "data/free.ogg", None, function Success id -> SendMessage (chat.id, "That file's ID is " ^ id, None)
-                                                                      | Failure er -> SendMessage (chat.id, "Failed to send audio with: " ^ er, None)) in
+        | {chat} -> SendVoice (chat.id, "data/free.ogg", None, None, function Success id -> Nothing
+                                                                            | Failure er -> SendMessage (chat.id, "Failed to send audio with: " ^ er, None, None)) in
       let dab = function
-        | {chat} -> Chain (SendPhoto (chat.id, "data/dab.jpg", Some "Bitch, dab", None, function Success id -> SendMessage (chat.id, "That file's ID is " ^ id, None)
-                                                                                               | Failure er -> SendMessage (chat.id, "Failed to send photo with: " ^ er, None)),
-                           ResendAudio (chat.id, "BQADAQADcwADi_LrCbRvyK66JIVTAg", "Migos", "Pipe It Up", None)) in
+        | {chat} -> Chain (SendPhoto (chat.id, "data/dab.jpg", Some "Bitch, dab", None, None, function Success id -> Nothing
+                                                                                                     | Failure er -> SendMessage (chat.id, "Failed to send photo with: " ^ er, None, None)),
+                           ResendAudio (chat.id, "BQADAQADcwADi_LrCbRvyK66JIVTAg", "Migos", "Pipe It Up", None, None)) in
       [{name = "hello"; description = "Greet the user"; enabled = true; run = greet};
        {name = "meow"; description = "Load images from /r/meow_irl"; enabled = true; run = meow};
        {name = "free"; description = "Free the world from the clutches of proprietary software"; enabled = true; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};

@@ -434,22 +434,22 @@ module Command : sig
   type action =
     | Nothing
     | GetMe of (User.user Result.result -> action)
-    | SendMessage of int * string * int option
+    | SendMessage of int * string * int option * ReplyMarkup.reply_markup option
     | ForwardMessage of int * int * int
     | SendChatAction of int * ChatAction.action
-    | SendPhoto of int * string * string option * int option * (string Result.result -> action)
-    | ResendPhoto of int * string * string option * int option
-    | SendAudio of int * string * string * string * int option * (string Result.result -> action)
-    | ResendAudio of int * string * string * string * int option
-    | SendDocument of int * string * int option * (string Result.result -> action)
-    | ResendDocument of int * string * int option
-    | SendSticker of int * string * int option * (string Result.result -> action)
-    | ResendSticker of int * string * int option
-    | SendVideo of int * string * int option * string option * int option * (string Result.result -> action)
-    | ResendVideo of int * string * int option * string option * int option
-    | SendVoice of int * string * int option * (string Result.result -> action)
-    | ResendVoice of int * string * int option
-    | SendLocation of int * float * float * int option
+    | SendPhoto of int * string * string option * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendPhoto of int * string * string option * int option * ReplyMarkup.reply_markup option
+    | SendAudio of int * string * string * string * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendAudio of int * string * string * string * int option * ReplyMarkup.reply_markup option
+    | SendDocument of int * string * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendDocument of int * string * int option * ReplyMarkup.reply_markup option
+    | SendSticker of int * string * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendSticker of int * string * int option * ReplyMarkup.reply_markup option
+    | SendVideo of int * string * int option * string option * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendVideo of int * string * int option * string option * int option * ReplyMarkup.reply_markup option
+    | SendVoice of int * string * int option * ReplyMarkup.reply_markup option * (string Result.result -> action)
+    | ResendVoice of int * string * int option * ReplyMarkup.reply_markup option
+    | SendLocation of int * float * float * int option * ReplyMarkup.reply_markup option
     | GetUpdates of (Update.update list Result.result -> action)
     | PeekUpdate of (Update.update Result.result -> action)
     | PopUpdate of (Update.update Result.result -> action)
@@ -498,7 +498,7 @@ module type TELEGRAM_BOT = sig
   val get_me : User.user Result.result Lwt.t
 
   (** Send a text message to a specified chat *)
-  val send_message : chat_id:int -> text:string -> reply_to:int option -> unit Result.result Lwt.t
+  val send_message : chat_id:int -> text:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
 
   (** Forwards any message from one chat to another (can be same chat) *)
   val forward_message : chat_id:int -> from_chat_id:int -> message_id:int -> unit Result.result Lwt.t
@@ -507,43 +507,43 @@ module type TELEGRAM_BOT = sig
   val send_chat_action : chat_id:int -> action:ChatAction.action -> unit Result.result Lwt.t
 
   (** Send a new image file (jpeg/png) to a specified chat. Note that `photo` refers to the file's name to send. *)
-  val send_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> string Result.result Lwt.t
+  val send_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
 
   (** Send an existing image file (jpeg/png) to a specified chat. Note that `photo` refers to the file's id on the Telegram servers. *)
-  val resend_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> unit Result.result Lwt.t
+  val resend_photo : chat_id:int -> photo:string -> ?caption:string option -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
 
   (** Send a new audio file (mp3) to a specified chat. Note that `audio` refers to the file's name to send. *)
-  val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> string Result.result Lwt.t
+  val send_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
 
   (** Send an existing audio file (mp3) to a specified chat. Note that `audio` refers to the file's id on the Telegram servers. *)
-  val resend_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> unit Result.result Lwt.t
+  val resend_audio : chat_id:int -> audio:string -> performer:string -> title:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
 
   (** Send a new document file to a specified chat. Note that `document` refers to the file's name to send. *)
-  val send_document : chat_id:int -> document:string -> reply_to:int option -> string Result.result Lwt.t
+  val send_document : chat_id:int -> document:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
 
   (** Send an existing document file to a specified chat. Note that `document` refers to the file's id on the Telegram servers. *)
-  val resend_document : chat_id:int -> document:string -> reply_to:int option -> unit Result.result Lwt.t
+  val resend_document : chat_id:int -> document:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
 
   (** Send a new sticker file (webp) to a specified chat. Note that `sticker` refers to the file's name to send. *)
-  val send_sticker : chat_id:int -> sticker:string -> reply_to:int option -> string Result.result Lwt.t
+  val send_sticker : chat_id:int -> sticker:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
 
   (** Send an existing sticker file (webp) to a specified chat. Note that `sticker` refers to the file's id on the Telegram servers. *)
-  val resend_sticker : chat_id:int -> sticker:string -> reply_to:int option -> unit Result.result Lwt.t
+  val resend_sticker : chat_id:int -> sticker:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
 
   (** Send a new video file (mp4/mov/webm) to a specified chat. Note that `video` refers to the file's name to send. *)
-  val send_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> string Result.result Lwt.t
+  val send_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
 
   (** Send an existing video (mp4/mov/webm) file to a specified chat. Note that `video` refers to the file's id on the Telegram servers. *)
-  val resend_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> unit Result.result Lwt.t
+  val resend_video : chat_id:int -> video:string -> ?duration:int option -> ?caption:string option -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
 
   (** Send a new voice message (ogg) to a specified chat. Note that `voice` refers to the file's name to send. *)
-  val send_voice : chat_id:int -> voice:string -> reply_to:int option -> string Result.result Lwt.t
+  val send_voice : chat_id:int -> voice:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> string Result.result Lwt.t
 
   (** Send an existing voice message (ogg) to a specified chat. Note that `voice` refers to the file's id on the Telegram servers. *)
-  val resend_voice : chat_id:int -> voice:string -> reply_to:int option -> unit Result.result Lwt.t
+  val resend_voice : chat_id:int -> voice:string -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
 
   (** Send a location to a specified chat *)
-  val send_location : chat_id:int -> latitude:float -> longitude:float -> reply_to:int option -> unit Result.result Lwt.t
+  val send_location : chat_id:int -> latitude:float -> longitude:float -> reply_to:int option -> reply_markup:ReplyMarkup.reply_markup option -> unit Result.result Lwt.t
 
   (** Get a list of all available updates that the bot has received *)
   val get_updates : Update.update list Result.result Lwt.t
