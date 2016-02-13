@@ -42,6 +42,15 @@ module MyBot = Api.Mk (struct
         | {chat} ->
           let (sender, msg, time) = Db.Quotes.get_random () in
           SendMessage (chat.id, sender ^ " said:\n" ^ msg, None, None) in
+      let sed = function
+        | {chat; message_id; text = Some text; reply_to_message = Some {text = Some original}} ->
+          let open Batteries.String in
+          let open Batteries.Tuple in
+          let (_, cmd) = split text ~by:" " in
+          let (sub, by) = Tuple2.mapn strip (split cmd ~by:"/") in
+          let (_, result) = replace ~str:original ~sub ~by in
+          SendMessage (chat.id, result, Some message_id, None)
+        | {chat; message_id} -> SendMessage (chat.id, "Invalid usage of /sed", Some message_id, None) in
       let decide = function
         | {chat; message_id; text = Some text} ->
           let open Batteries.String in
@@ -95,6 +104,7 @@ module MyBot = Api.Mk (struct
        {name = "dab"; description = "Pipe it up"; enabled = true; run = dab};
        {name = "unfree"; description = "Testing voice API"; enabled = true; run = unfree};
        {name = "q"; description = "Save a quote"; enabled = true; run = quote};
+       {name = "sed"; description = "Correct text"; enabled = true; run = sed};
        {name = "jukebox"; description = "Store and play music"; enabled = true; run = jukebox};
        {name = "decide"; description = "Help make a decision"; enabled = true; run = decide}]
 end)
