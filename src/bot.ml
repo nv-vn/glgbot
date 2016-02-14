@@ -4,6 +4,8 @@ open Cohttp_lwt_unix
 
 open Yojson.Safe
 
+open Telegram
+
 module MyBot = Api.Mk (struct
     open Api.Chat
     open Api.Audio
@@ -17,8 +19,7 @@ module MyBot = Api.Mk (struct
     let commands =
       let open Lwt in
       let greet = function
-        | {chat; message_id} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg, Some message_id, None)
-        | _ -> Nothing in
+        | {chat; message_id} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg, Some message_id, None) in
       let meow_cache = ref [] in
       let meow = function
         | {chat} -> begin
