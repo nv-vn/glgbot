@@ -16,7 +16,7 @@ module MyBot = Api.Mk (struct
     open Api.Audio.Out
 
     let token = [%blob "../bot.token"] (* Remember, we start from _build/ *)
-    let commands =
+    let rec commands =
       let open Lwt in
       let greet = function
         | {chat; message_id} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg, Some message_id, None) in
@@ -89,6 +89,18 @@ module MyBot = Api.Mk (struct
               end
           end
         | {chat; message_id} -> SendMessage (chat.id, "Invalid input", Some message_id, None) in
+      let enable = function
+        | {chat; text = Some text} ->
+          let arg = List.hd @@ Api.Command.tokenize text in
+          List.iter (fun cmd -> if cmd.name = arg then cmd.enabled <- true) commands;
+          Nothing
+        | {chat} -> Nothing in
+      let disable = function
+        | {chat; text = Some text} ->
+          let arg = List.hd @@ Api.Command.tokenize text in
+          List.iter (fun cmd -> if cmd.name = arg then cmd.enabled <- false) commands;
+          Nothing
+        | {chat} -> Nothing in
       let share_audio song performer title = function
         | {chat; message_id} -> ResendAudio (chat.id, song, performer, title, Some message_id, None) in
       let unfree = function
@@ -106,6 +118,8 @@ module MyBot = Api.Mk (struct
        {name = "unfree"; description = "Testing voice API"; enabled = true; run = unfree};
        {name = "q"; description = "Save a quote"; enabled = true; run = quote};
        {name = "sed"; description = "Correct text"; enabled = true; run = sed};
+       {name = "enable"; description = "Enable a disabled command"; enabled = true; run = enable};
+       {name = "disable"; description = "Disable an enabled command"; enabled = true; run = disable};
        {name = "jukebox"; description = "Store and play music"; enabled = true; run = jukebox};
        {name = "decide"; description = "Help make a decision"; enabled = true; run = decide}]
 end)
