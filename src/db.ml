@@ -34,3 +34,21 @@ module Jukebox = struct
   let list () =
     List.map (fun (title, performer) -> performer ^ " - " ^ title) (all ())
 end
+
+module Permissions = struct
+  let (_, put) =   [%gensqlite db "INSERT OR REPLACE INTO permissions (user_id, can_enable_disable) VALUES (%d{user_id}, %d{permission})"]
+  let (_, get) =   [%gensqlite db "SELECT @d{permission} FROM permissions WHERE user_id = %d{user_id}"]
+  let (_, clear) = [%gensqlite db "DELETE FROM permissions"]
+
+  let set ~user_id ~permission =
+    let permission' = match permission with
+      | true -> 1
+      | false -> 0 in
+    put ~user_id ~permission:permission' ()
+
+  let check ~user_id =
+    match get ~user_id () with
+    | [] | 0::_ -> false
+    | 1::_ -> true
+    | x::_ -> if x > 1 then true else false
+end
