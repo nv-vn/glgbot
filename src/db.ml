@@ -37,7 +37,7 @@ end
 
 module Permissions = struct
   let (_, put) =   [%gensqlite db "INSERT OR REPLACE INTO permissions (user_id, can_enable_disable) VALUES (%d{user_id}, %d{permission})"]
-  let (_, get) =   [%gensqlite db "SELECT @d{permission} FROM permissions WHERE user_id = %d{user_id}"]
+  let (_, get) =   [%gensqlite db "SELECT @d{can_enable_disable} FROM permissions WHERE user_id = %d{user_id}"]
   let (_, clear) = [%gensqlite db "DELETE FROM permissions"]
 
   let set ~user_id ~permission =
