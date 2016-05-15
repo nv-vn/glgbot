@@ -19,6 +19,8 @@ module MyBot = Api.Mk (struct
     include BotDefaults
 
     let token = [%blob "../bot.token"] (* Remember, we start from _build/ *)
+    let command_postfix = Some "glgbot" (* Ignore commands that have a username other than @glgbot appended *)
+
     let rec commands =
       let open Lwt in
       let greet = function
