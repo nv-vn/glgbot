@@ -1,1 +1,1 @@
-PKG lwt cohttp yojson batteries
+PKG lwt cohttp yojson batteries telegraml

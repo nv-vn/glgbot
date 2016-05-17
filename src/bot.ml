@@ -147,6 +147,15 @@ module MyBot = Api.Mk (struct
        {name = "op"; description = "Give operator status to a user"; enabled = true; run = op};
        {name = "jukebox"; description = "Store and play music"; enabled = true; run = jukebox};
        {name = "decide"; description = "Help make a decision"; enabled = true; run = decide}]
+
+    let new_chat_member chat user =
+      let open Api.Chat in
+      let title = match chat.title with Some x -> x | _ -> "this shithole" in
+      SendMessage (chat.id, "Welcome to " ^ title ^ " " ^ Api.User.(user.first_name), false, None, None)
+
+    let left_chat_member chat user =
+      let open Api.Chat in
+      SendMessage (chat.id, "lmao look at this nerd dude just got roasted", false, None, None)
 end)
 
 type 'a result = 'a Api.Result.result
