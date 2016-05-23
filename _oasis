@@ -14,7 +14,7 @@ Executable "glgbot"
   MainIs: bot.ml
   CompiledObject: best
   Install: false
-  BuildDepends: lwt, cohttp, cohttp.lwt, yojson, batteries, ppx_blob, gensqlite, gensqlite.ppx, telegraml
+  BuildDepends: lwt, cohttp, cohttp.lwt, yojson, batteries, ppx_blob, gensqlite, gensqlite.ppx, telegraml, telegraml-dashboard
 
 Document "telegram_api"
   Type: ocamlbuild (0.4)

@@ -1,1 +1,1 @@
-PKG lwt cohttp yojson batteries telegraml
+PKG lwt cohttp yojson batteries telegraml telegraml-dashboard

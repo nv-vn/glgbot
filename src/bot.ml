@@ -1,12 +1,10 @@
 open Lwt
-open Cohttp
-open Cohttp_lwt_unix
-
 open Yojson.Safe
 
 open Telegram
+open TelegramDashboard
 
-module MyBot = Api.Mk (struct
+module Glg = MkDashboard (struct
     open Api.Chat
     open Api.User
     open Api.Audio
@@ -158,24 +156,4 @@ module MyBot = Api.Mk (struct
       SendMessage (chat.id, "lmao look at this nerd dude just got roasted", false, None, None)
 end)
 
-type 'a result = 'a Api.Result.result
-
-let rec main () =
-  let open Api.Result in
-  let open Api.Update in
-  let open Api.User in
-  let body = (fun user -> user.first_name) <$> Lwt_main.run MyBot.get_me in
-  print_endline @@ default "Error on call to `getMe`!" body;
-  let open Lwt in
-  let process = function
-    | Success _ -> return ()
-    | Failure e ->
-      if e <> "Could not get head" then (* Ignore the huge fucking command line spam *)
-        Lwt_io.printl e
-      else return () in
-  let rec loop () =
-    MyBot.pop_update () >>= process >>= loop in
-  try Lwt_main.run @@ loop ()
-  with _ -> main ()
-
-let _ = main ()
+let () = Glg.run ()
