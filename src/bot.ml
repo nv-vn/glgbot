@@ -43,11 +43,13 @@ module Glg = MkDashboard (struct
           SendMessage (chat.id, "Quoting " ^ get_sender msg ^ " who said:\n" ^ text, false, None, None)
         | {chat; reply_to_message = Some msg} ->
           SendMessage (chat.id, "Quoting " ^ get_sender msg ^ " who said nothing", false, None, None)
-        | {chat; text = Some keyword} ->
-          SendMessage (chat.id, Db.Quotes.search ~keyword, false, None, None)
-        | {chat} ->
-          let (sender, msg, time) = Db.Quotes.get_random () in
-          SendMessage (chat.id, sender ^ " said:\n" ^ msg, false, None, None) in
+        | {chat; text = Some text} ->
+          match tokenize text with
+          | keyword::_ ->
+            SendMessage (chat.id, Db.Quotes.search ~keyword, false, None, None)
+          | [] ->
+            let (sender, msg, time) = Db.Quotes.get_random () in
+            SendMessage (chat.id, sender ^ " said:\n" ^ msg, false, None, None) in
       let sed = function
         | {chat; message_id; text = Some text; reply_to_message = Some {text = Some original}} ->
           let open Batteries.String in
