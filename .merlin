@@ -1,1 +1,3 @@
-PKG lwt cohttp yojson batteries telegraml telegraml-dashboard
+S src
+B _build/src
+PKG ppx_blob lwt cohttp yojson batteries telegraml telegraml-dashboard
