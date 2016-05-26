@@ -92,37 +92,6 @@ module Glg = MkDashboard (struct
               end
           end
         | {chat; message_id} -> SendMessage (chat.id, "Invalid input", false, Some message_id, None) in
-      let enable = function
-        | {chat; text = Some text; from} ->
-          let permission = match from with
-            | Some {id} -> Db.Permissions.check ~user_id:id
-            | None -> false in
-          if permission then
-            let arg = List.hd @@ Api.Command.tokenize text in
-            List.iter (fun cmd -> if cmd.name = arg then cmd.enabled <- true) commands
-          else ();
-          Nothing
-        | {chat} -> Nothing in
-      let disable = function
-        | {chat; text = Some text; from} ->
-          let permission = match from with
-            | Some {id} -> Db.Permissions.check ~user_id:id
-            | None -> false in
-          if permission then
-            let arg = List.hd @@ Api.Command.tokenize text in
-            List.iter (fun cmd -> if cmd.name = arg then cmd.enabled <- false) commands
-          else ();
-          Nothing
-        | {chat} -> Nothing in
-      let op = function
-        | {chat; text = Some text; from} ->
-          let permission = match from with
-            | Some {id} -> Db.Permissions.check ~user_id:id
-            | None -> false in
-          if permission then
-            Nothing (* OP the user... how do we get their user id from just a username? *)
-          else SendMessage (chat.id, "You don't have permission to OP other users", false, None, None)
-        | {chat} -> Nothing in
       let share_audio song performer title = function
         | {chat; message_id} -> ResendAudio (chat.id, song, performer, title, false, Some message_id, None) in
       let unfree = function
@@ -140,9 +109,6 @@ module Glg = MkDashboard (struct
        {name = "unfree"; description = "Testing voice API"; enabled = true; run = unfree};
        {name = "q"; description = "Save a quote"; enabled = true; run = quote};
        {name = "sed"; description = "Correct text"; enabled = true; run = sed};
-       {name = "enable"; description = "Enable a disabled command"; enabled = true; run = enable};
-       {name = "disable"; description = "Disable an enabled command"; enabled = true; run = disable};
-       {name = "op"; description = "Give operator status to a user"; enabled = true; run = op};
        {name = "jukebox"; description = "Store and play music"; enabled = true; run = jukebox};
        {name = "decide"; description = "Help make a decision"; enabled = true; run = decide}]
 
