@@ -2,6 +2,7 @@ open Lwt
 open Yojson.Safe
 
 open Telegram
+open Telegram.Actions
 open TelegramDashboard
 
 module Glg = MkDashboard (struct
@@ -22,7 +23,7 @@ module Glg = MkDashboard (struct
     let rec commands =
       let open Lwt in
       let greet = function
-        | {chat; message_id} as msg -> SendMessage (chat.id, "Hello, " ^ get_sender msg, false, Some message_id, None) in
+        | {chat; message_id} as msg -> send_message ~chat_id:chat.id "Hello, %s" (get_sender msg) ~reply_to:message_id in
       let meow_cache = ref [] in
       let meow = function
         | {chat} -> begin
@@ -33,19 +34,19 @@ module Glg = MkDashboard (struct
             else ();
             let len = List.length !meow_cache in
             if len = 0 then
-              SendMessage (chat.id, "Couldn't load any images", false, None, None)
+              send_message ~chat_id:chat.id "Couldn't load any images"
             else
-              SendMessage (chat.id, List.nth !meow_cache (Random.int len), false, None, None)
+              send_message ~chat_id:chat.id "%s" (List.nth !meow_cache (Random.int len))
           end in
       let quote = function
         | {chat; reply_to_message = Some ({text = Some text} as msg)} ->
           Db.Quotes.put ~quote:text ~who:(get_sender msg) ();
-          SendMessage (chat.id, "Quoting " ^ get_sender msg ^ " who said:\n" ^ text, false, None, None)
+          send_message ~chat_id:chat.id "Quoting %s who said:\n%s" (get_sender msg) text
         | {chat; reply_to_message = Some msg} ->
-          SendMessage (chat.id, "Quoting " ^ get_sender msg ^ " who said nothing", false, None, None)
+          send_message ~chat_id:chat.id "Quoting %s who said nothing" (get_sender msg)
         | {chat} ->
           let (sender, msg, time) = Db.Quotes.get_random () in
-          SendMessage (chat.id, sender ^ " said:\n" ^ msg, false, None, None) in
+          send_message ~chat_id:chat.id "%s said:\n%s" sender msg in
       let sed = function
         | {chat; message_id; text = Some text; reply_to_message = Some {text = Some original}} ->
           let open Batteries.String in
@@ -53,8 +54,8 @@ module Glg = MkDashboard (struct
           let (_, cmd) = split text ~by:" " in
           let (sub, by) = Tuple2.mapn strip (split cmd ~by:"/") in
           let (_, result) = replace ~str:original ~sub ~by in
-          SendMessage (chat.id, result, false, Some message_id, None)
-        | {chat; message_id} -> SendMessage (chat.id, "Invalid usage of /sed", false, Some message_id, None) in
+          send_message ~chat_id:chat.id "%s" result ~reply_to:message_id
+        | {chat; message_id} -> send_message ~chat_id:chat.id "Invalid usage of /sed" ~reply_to:message_id in
       let decide = function
         | {chat; message_id; text = Some text} ->
           let open Batteries.String in
@@ -67,71 +68,40 @@ module Glg = MkDashboard (struct
           let options = get_options [] all in
           let len = List.length options in
           if len = 0 then
-            SendMessage (chat.id, "Give me options nerd", false, Some message_id, None)
+            send_message ~chat_id:chat.id "Give me options nerd" ~reply_to:message_id
           else if len = 1 then
-            SendMessage (chat.id, List.nth ["yes"; "no"] (Random.int 2), false, Some message_id, None)
+            send_message ~chat_id:chat.id "%s" (List.nth ["yes"; "no"] (Random.int 2)) ~reply_to:message_id
           else
-            SendMessage (chat.id, List.nth options (Random.int len), false, Some message_id, None)
-        | _ -> Nothing in
+            send_message ~chat_id:chat.id "%s" (List.nth options (Random.int len)) ~reply_to:message_id
+        | _ -> nothing in
       let jukebox = function
         | {chat; text = Some text; reply_to_message = Some {audio = Some {file_id}}} -> begin
             let open Batteries.String in
             let (_, info) = split text ~by:" " in
             let (performer, title) = split info ~by:"-" in
             Db.Jukebox.put ~title:(trim @@ title) ~performer ~file_id ();
-            SendMessage (chat.id, "Added " ^ info ^ " to the database!", false, None, None)
+            send_message ~chat_id:chat.id "Added %s to the database!" info
           end
         | {chat; message_id; text = Some text} -> begin
             let open Batteries.String in
             match tokenize text with
-            | [] -> SendMessage (chat.id, concat "\n" (Db.Jukebox.list ()), false, None, None)
+            | [] -> send_message ~chat_id:chat.id "%s" (concat "\n" (Db.Jukebox.list ()))
             | xs -> begin
                 let song = trim @@ concat " " xs in
                 let (title, performer, file_id) = Db.Jukebox.search ~title:song in
-                ResendAudio (chat.id, file_id, performer, title, false, Some message_id, None)
+                resend_audio ~chat_id:chat.id file_id ~performer ~title ~reply_to:message_id
               end
           end
-        | {chat; message_id} -> SendMessage (chat.id, "Invalid input", false, Some message_id, None) in
-      let enable = function
-        | {chat; text = Some text; from} ->
-          let permission = match from with
-            | Some {id} -> Db.Permissions.check ~user_id:id
-            | None -> false in
-          if permission then
-            let arg = List.hd @@ Api.Command.tokenize text in
-            List.iter (fun cmd -> if cmd.name = arg then cmd.enabled <- true) commands
-          else ();
-          Nothing
-        | {chat} -> Nothing in
-      let disable = function
-        | {chat; text = Some text; from} ->
-          let permission = match from with
-            | Some {id} -> Db.Permissions.check ~user_id:id
-            | None -> false in
-          if permission then
-            let arg = List.hd @@ Api.Command.tokenize text in
-            List.iter (fun cmd -> if cmd.name = arg then cmd.enabled <- false) commands
-          else ();
-          Nothing
-        | {chat} -> Nothing in
-      let op = function
-        | {chat; text = Some text; from} ->
-          let permission = match from with
-            | Some {id} -> Db.Permissions.check ~user_id:id
-            | None -> false in
-          if permission then
-            Nothing (* OP the user... how do we get their user id from just a username? *)
-          else SendMessage (chat.id, "You don't have permission to OP other users", false, None, None)
-        | {chat} -> Nothing in
+        | {chat; message_id} -> send_message ~chat_id:chat.id "Invalid input" ~reply_to:message_id in
       let share_audio song performer title = function
-        | {chat; message_id} -> ResendAudio (chat.id, song, performer, title, false, Some message_id, None) in
+        | {chat; message_id} -> resend_audio ~chat_id:chat.id song ~performer ~title ~reply_to:message_id in
       let unfree = function
-        | {chat} -> SendVoice (chat.id, "data/free.ogg", false, None, None, function Success id -> Nothing
-                                                                                   | Failure er -> SendMessage (chat.id, "Failed to send audio with: " ^ er, false, None, None)) in
+        | {chat} -> send_voice ~chat_id:chat.id "data/free.ogg" /> function Success id -> nothing
+                                                                          | Failure er -> send_message ~chat_id:chat.id "Failed to send audio with: %s" er in
       let dab = function
-        | {chat} -> Chain (SendPhoto (chat.id, "data/dab.jpg", Some "Bitch, dab", false, None, None, function Success id -> Nothing
-                                                                                                            | Failure er -> SendMessage (chat.id, "Failed to send photo with: " ^ er, false, None, None)),
-                           ResendAudio (chat.id, "BQADAQADcwADi_LrCbRvyK66JIVTAg", "Migos", "Pipe It Up", false, None, None)) in
+        | {chat} -> send_photo ~chat_id:chat.id "data/dab.jpg" ~caption:"Bitch, dab" /> function Success id -> nothing
+                                                                                               | Failure er -> send_message ~chat_id:chat.id "Failed to send photo with: %s" er
+                    /+ resend_audio ~chat_id:chat.id "BQADAQADcwADi_LrCbRvyK66JIVTAg" ~performer:"Migos" ~title:"Pipe It Up" in
       [{name = "hello"; description = "Greet the user"; enabled = true; run = greet};
        {name = "meow"; description = "Load images from /r/meow_irl"; enabled = true; run = meow};
        {name = "free"; description = "Free the world from the clutches of proprietary software"; enabled = true; run = share_audio "BQADAQADcQADi_LrCWoG5Wp27N76Ag" "Richard M. Stallman" "Free Software Song"};
@@ -140,20 +110,17 @@ module Glg = MkDashboard (struct
        {name = "unfree"; description = "Testing voice API"; enabled = true; run = unfree};
        {name = "q"; description = "Save a quote"; enabled = true; run = quote};
        {name = "sed"; description = "Correct text"; enabled = true; run = sed};
-       {name = "enable"; description = "Enable a disabled command"; enabled = true; run = enable};
-       {name = "disable"; description = "Disable an enabled command"; enabled = true; run = disable};
-       {name = "op"; description = "Give operator status to a user"; enabled = true; run = op};
        {name = "jukebox"; description = "Store and play music"; enabled = true; run = jukebox};
        {name = "decide"; description = "Help make a decision"; enabled = true; run = decide}]
 
     let new_chat_member chat user =
       let open Api.Chat in
       let title = match chat.title with Some x -> x | _ -> "this shithole" in
-      SendMessage (chat.id, "Welcome to " ^ title ^ " " ^ Api.User.(user.first_name), false, None, None)
+      send_message ~chat_id:chat.id "Welcome to %s, %s" title Api.User.(user.first_name)
 
     let left_chat_member chat user =
       let open Api.Chat in
-      SendMessage (chat.id, "lmao look at this nerd dude just got roasted", false, None, None)
+      send_message ~chat_id:chat.id "lmao look at this nerd dude just got roasted"
 end)
 
 let () = Glg.run ()
