@@ -44,6 +44,14 @@ module Glg = MkDashboard (struct
           send_message ~chat_id:chat.id "Quoting %s who said:\n%s" (get_sender msg) text
         | {chat; reply_to_message = Some msg} ->
           send_message ~chat_id:chat.id "Quoting %s who said nothing" (get_sender msg)
+        | {chat; text = Some text} -> begin
+          match tokenize text with
+          | keyword::_ ->
+           send_message ~chat_id:chat.id "%s" (Db.Quotes.search ~keyword)
+          | [] ->
+            let (sender, msg, time) = Db.Quotes.get_random () in
+            send_message ~chat_id:chat.id "%s said:\n%s" sender msg
+          end
         | {chat} ->
           let (sender, msg, time) = Db.Quotes.get_random () in
           send_message ~chat_id:chat.id "%s said:\n%s" sender msg in

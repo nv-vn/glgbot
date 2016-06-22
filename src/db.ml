@@ -5,6 +5,7 @@ let db = Sqlite3.db_open "data/glg.db"
 module Quotes = struct
   let (_, put)   = [%gensqlite db "INSERT INTO quotes (who, quote) VALUES (%s{who}, %s{quote})"]
   let (_, get)   = [%gensqlite db "SELECT @s{who}, @s{quote}, @d{timestamp} FROM quotes WHERE ROWID = %d{index}"]
+  let (_, find)  = [%gensqlite db "SELECT @s{who}, @s{quote}, @d{timestamp} FROM quotes WHERE quote MATCH %s{keyword}"]
   let (_, size)  = [%gensqlite db "SELECT count(*) AS @d{c} FROM quotes"]
   let (_, clear) = [%gensqlite db "DELETE FROM quotes"]
 
@@ -17,6 +18,11 @@ module Quotes = struct
     | [] -> print_endline ("Index " ^ string_of_int index ^ " not found in database");
     ("Error", "Error", 0)
     | x::_ -> x
+
+  let search ~keyword =
+    match find ~keyword () with
+    | [] -> "No matching quotes were found"
+    | (sender, msg, _)::_ -> sender ^ " said:\n" ^ msg
 end
 
 module Jukebox = struct
@@ -33,22 +39,4 @@ module Jukebox = struct
 
   let list () =
     List.map (fun (title, performer) -> performer ^ " - " ^ title) (all ())
-end
-
-module Permissions = struct
-  let (_, put) =   [%gensqlite db "INSERT OR REPLACE INTO permissions (user_id, can_enable_disable) VALUES (%d{user_id}, %d{permission})"]
-  let (_, get) =   [%gensqlite db "SELECT @d{can_enable_disable} FROM permissions WHERE user_id = %d{user_id}"]
-  let (_, clear) = [%gensqlite db "DELETE FROM permissions"]
-
-  let set ~user_id ~permission =
-    let permission' = match permission with
-      | true -> 1
-      | false -> 0 in
-    put ~user_id ~permission:permission' ()
-
-  let check ~user_id =
-    match get ~user_id () with
-    | [] | 0::_ -> false
-    | 1::_ -> true
-    | x::_ -> if x > 1 then true else false
 end
